@@ -9,7 +9,7 @@ import { readdir, stat } from 'node:fs/promises';
 import { join, relative, extname, basename, resolve } from 'node:path';
 import { runCommandWithTimeout } from './ffmpeg-runner.js';
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 const port = Number(process.env.PORT ?? 3000);
 const defaultMediaDir = existsSync('/media') && statSync('/media').isDirectory() ? '/media' : resolve(process.cwd(), 'media');
 const defaultDataDir = existsSync('/data') && statSync('/data').isDirectory() ? '/data' : resolve(process.cwd(), 'data');

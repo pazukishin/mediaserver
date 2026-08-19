@@ -32,7 +32,7 @@ type SortField = 'name' | 'created';
 type SortDirection = 'asc' | 'desc';
 type GallerySize = 'small' | 'medium' | 'large';
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 const APP_NAME = 'MediaServer';
 
 const gallerySizeSpec: Record<GallerySize, { label: string; width: number; height: number; gap: number }> = {

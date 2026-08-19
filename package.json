@@ -1,6 +1,6 @@
 {
   "name": "MediaServer",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Private self-hosted media server for browsing and playing local audio and video libraries.",
   "type": "module",
   "scripts": {

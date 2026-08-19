@@ -1,6 +1,6 @@
 # MediaServer
 
-![Version](https://img.shields.io/badge/version-1.2.0-7dce9b)
+![Version](https://img.shields.io/badge/version-1.2.1-7dce9b)
 ![License](https://img.shields.io/badge/license-MIT-7dce9b)
 ![Runtime](https://img.shields.io/badge/Node.js-24-7dce9b)
 
