@@ -1,0 +1,18 @@
+services:
+  mediaserver:
+    image: pazus-mediaserver:latest
+    build:
+      context: .
+      tags:
+        - pazus-mediaserver:latest
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      MEDIA_USER: ${MEDIA_USER:-media}
+      MEDIA_PASSWORD: ${MEDIA_PASSWORD:-cambia-esta-contrasena}
+      SESSION_SECRET: ${SESSION_SECRET:-cambia-esta-clave}
+    volumes:
+      - ./media:/media:ro
+      - ./data:/data
+    restart: unless-stopped

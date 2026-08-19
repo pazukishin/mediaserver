@@ -1,0 +1,221 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Deploy MediaServer",
+			"type": "shell",
+			"command": "docker compose up --build -d",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Export Portainer image",
+			"type": "shell",
+			"command": "docker build -t pazus-mediaserver:latest . && docker save -o pazus-mediaserver-latest.tar pazus-mediaserver:latest && ls -l pazus-mediaserver-latest.tar",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Export Docker tarball",
+			"type": "shell",
+			"command": "docker build -t pazus-mediaserver:latest .; docker save -o pazus-mediaserver-latest.tar pazus-mediaserver:latest; Get-ChildItem .\\pazus-mediaserver-latest.tar | Select-Object Name,Length,LastWriteTime",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Build and export pazus image",
+			"type": "shell",
+			"command": "docker build -t pazus-mediaserver:latest .; docker save -o pazus-mediaserver-latest.tar pazus-mediaserver:latest; Get-ChildItem .\\pazus-mediaserver-latest.tar | Select-Object Name,Length,LastWriteTime",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Build after UI enhancements",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Verify build after type fix",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Restart local app",
+			"type": "shell",
+			"command": "docker compose down; docker compose up --build -d; docker compose ps; docker compose logs --tail=80 mediaserver",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Restart app after hover spacing fix",
+			"type": "shell",
+			"command": "docker compose down; docker compose up --build -d; docker compose ps; docker compose logs --tail=80 mediaserver",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Validate local build after header spacing fix",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Restart app after compact header change",
+			"type": "shell",
+			"command": "docker compose down; docker compose up --build -d; docker compose ps; docker compose logs --tail=80 mediaserver",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Verify hover preview build",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Restart app after hover preview change",
+			"type": "shell",
+			"command": "docker compose down; docker compose up --build -d; docker compose ps; docker compose logs --tail=80 mediaserver",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Verify favorites implementation build",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Deploy favorite features",
+			"type": "shell",
+			"command": "docker compose down; docker compose up --build -d; docker compose ps; docker compose logs --tail=80 mediaserver",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Validate player and favorite fixes",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Restart app with favorite and player fixes",
+			"type": "shell",
+			"command": "docker compose down; docker compose up --build -d; docker compose ps; docker compose logs --tail=80 mediaserver",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Verify recommendations panel layout",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Restart app after recommendations layout fix",
+			"type": "shell",
+			"command": "docker compose down; docker compose up --build -d; docker compose ps; docker compose logs --tail=80 mediaserver",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Verify portrait close button fix",
+			"type": "shell",
+			"command": "docker compose up --build -d; docker compose ps",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Verify candidate version build",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Build mobile player changes",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Validate mobile UX adjustments",
+			"type": "shell",
+			"command": "npm run build",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Start app with latest mobile UX changes",
+			"type": "shell",
+			"command": "docker compose up --build -d && docker compose ps",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Start app in Docker",
+			"type": "shell",
+			"command": "docker compose up --build -d; docker compose ps",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Rebuild after desktop portrait fix",
+			"type": "shell",
+			"command": "docker compose up --build -d; docker compose ps",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Rebuild and relaunch after UA-based mobile fix",
+			"type": "shell",
+			"command": "docker compose up --build -d; docker compose ps",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Restart MediaServer Docker",
+			"type": "shell",
+			"command": "cd /d C:\\Repos\\MediaServer && docker compose up --build -d && docker compose ps",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
