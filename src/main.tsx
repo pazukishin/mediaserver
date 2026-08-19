@@ -391,19 +391,42 @@ function IntegratedPlayer({ item, recommendations, autoplay, onAutoplayChange, o
     if (!player) return;
     let autoMarked = false;
     let lastSaved = 0;
+    let restored = false;
+    const savePosition = (position: number) => {
+      if (!Number.isFinite(position) || position <= 0) return;
+      lastSaved = position;
+      void api(`/api/items/${item.id}/progress`, { method: 'POST', body: JSON.stringify({ position }) });
+    };
+    const restorePosition = () => {
+      const position = Number(item.position);
+      if (restored || !Number.isFinite(position) || position <= 0 || player.duration <= position) return;
+      player.currentTime = position;
+      restored = true;
+    };
     const unsubscribe = player.subscribe(({ currentTime, duration }) => {
       if (currentTime - lastSaved >= 4) {
-        lastSaved = currentTime;
-        void api(`/api/items/${item.id}/progress`, { method: 'POST', body: JSON.stringify({ position: currentTime }) });
+        savePosition(currentTime);
       }
       if (!autoMarked && duration > 0 && currentTime / duration >= 0.9) {
         autoMarked = true;
         void api(`/api/items/${item.id}/watched`, { method: 'POST', body: JSON.stringify({ watched: true }) }).then(() => onChanged(true));
       }
     });
+    const handlePause = () => savePosition(player.currentTime);
+    player.addEventListener('loaded-metadata', restorePosition);
+    player.addEventListener('can-play', restorePosition);
+    player.addEventListener('pause', handlePause);
     const handleEnded = () => { const next = autoplayRef.current ? recommendationsRef.current[0] : undefined; if (next) selectRef.current(next); };
     player.addEventListener('ended', handleEnded);
-    return () => { unsubscribe(); player.removeEventListener('ended', handleEnded); };
+    restorePosition();
+    return () => {
+      savePosition(player.currentTime);
+      unsubscribe();
+      player.removeEventListener('loaded-metadata', restorePosition);
+      player.removeEventListener('can-play', restorePosition);
+      player.removeEventListener('pause', handlePause);
+      player.removeEventListener('ended', handleEnded);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id]);
 
