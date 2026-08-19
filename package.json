@@ -1,7 +1,7 @@
 {
   "name": "MediaServer",
   "version": "1.2.0",
-  "description": "",
+  "description": "Private self-hosted media server for browsing and playing local audio and video libraries.",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"tsx watch server/index.ts\" \"vite\"",
@@ -9,9 +9,9 @@
     "start": "tsx server/index.ts",
     "test": "node --test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["media-server", "self-hosted", "audio", "video", "docker"],
+  "author": "pazukishin",
+  "license": "MIT",
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
     "@fastify/static": "^10.1.3",
