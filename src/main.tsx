@@ -405,6 +405,10 @@ function IntegratedPlayer({ item, recommendations, autoplay, onAutoplayChange, o
       restored = true;
     };
     const unsubscribe = player.subscribe(({ currentTime, duration }) => {
+      if (duration > 0) {
+        metadataReady = true;
+        restorePosition();
+      }
       if (currentTime - lastSaved >= 4) {
         savePosition(currentTime);
       }
