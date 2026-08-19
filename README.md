@@ -169,9 +169,15 @@ El botón `Escanear` analiza la biblioteca y genera:
 - miniaturas de portada
 - previews animados para vídeos
 - entradas en la base de datos SQLite
-- sincronización del progreso de reproducción
+- actualización del catálogo sin perder el estado de vistos y favoritos
 
 La lógica de escaneo está protegida para que no bloquee la aplicación durante tiempos prolongados, evitando que el servidor quede colgado por un archivo problemático o por tareas pesadas de FFmpeg.
+
+El progreso de reproducción y el estado de cada elemento son conceptos separados:
+
+- **Progreso de reproducción**: guarda la posición aproximada en la que se dejó un audio o vídeo para poder continuar desde ahí.
+- **Visto/No visto**: es el estado manual o automático que indica si el contenido se ha completado.
+- **Favoritos**: es una marca independiente para encontrar rápidamente contenido guardado.
 
 ## Persistencia
 
