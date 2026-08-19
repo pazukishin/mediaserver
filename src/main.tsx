@@ -32,7 +32,7 @@ type SortField = 'name' | 'created';
 type SortDirection = 'asc' | 'desc';
 type GallerySize = 'small' | 'medium' | 'large';
 
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '1.2.2';
 const APP_NAME = 'MediaServer';
 
 const gallerySizeSpec: Record<GallerySize, { label: string; width: number; height: number; gap: number }> = {
@@ -394,13 +394,14 @@ function IntegratedPlayer({ item, recommendations, autoplay, onAutoplayChange, o
     let restored = false;
     let metadataReady = false;
     let resumePosition: number | null = null;
+    let resumeAllowed = !item.watched;
     const savePosition = (position: number) => {
       if (!Number.isFinite(position) || position <= 0) return;
       lastSaved = position;
       void api(`/api/items/${item.id}/progress`, { method: 'POST', body: JSON.stringify({ position }) });
     };
     const restorePosition = () => {
-      if (restored || !metadataReady || resumePosition === null || !Number.isFinite(resumePosition) || resumePosition <= 0 || player.duration <= resumePosition) return;
+      if (restored || !resumeAllowed || !metadataReady || resumePosition === null || !Number.isFinite(resumePosition) || resumePosition <= 0 || player.duration <= resumePosition) return;
       player.currentTime = resumePosition;
       restored = true;
     };
@@ -424,10 +425,14 @@ function IntegratedPlayer({ item, recommendations, autoplay, onAutoplayChange, o
     const handleEnded = () => { const next = autoplayRef.current ? recommendationsRef.current[0] : undefined; if (next) selectRef.current(next); };
     player.addEventListener('ended', handleEnded);
     void api(`/api/items/${item.id}/progress`).then((result) => {
+      resumeAllowed = !Boolean(result.watched);
       resumePosition = Number(result.position);
+      if (!resumeAllowed) restored = true;
       restorePosition();
     }).catch(() => {
+      resumeAllowed = !item.watched;
       resumePosition = Number(item.position);
+      if (!resumeAllowed) restored = true;
       restorePosition();
     });
     return () => {

@@ -1,6 +1,6 @@
 # MediaServer
 
-![Version](https://img.shields.io/badge/version-1.2.1-7dce9b)
+![Version](https://img.shields.io/badge/version-1.2.2-7dce9b)
 ![License](https://img.shields.io/badge/license-MIT-7dce9b)
 ![Runtime](https://img.shields.io/badge/Node.js-24-7dce9b)
 
@@ -176,7 +176,7 @@ La lógica de escaneo está protegida para que no bloquee la aplicación durante
 El progreso de reproducción y el estado de cada elemento son conceptos separados:
 
 - **Progreso de reproducción**: guarda la posición aproximada en la que se dejó un audio o vídeo para poder continuar desde ahí.
-- **Visto/No visto**: es el estado manual o automático que indica si el contenido se ha completado.
+- **Visto/No visto**: es el estado manual o automático que indica si el contenido se ha completado. Un elemento marcado como `Visto` siempre empieza desde el principio y nunca restaura una posición anterior.
 - **Favoritos**: es una marca independiente para encontrar rápidamente contenido guardado.
 
 ## Persistencia
