@@ -392,15 +392,16 @@ function IntegratedPlayer({ item, recommendations, autoplay, onAutoplayChange, o
     let autoMarked = false;
     let lastSaved = 0;
     let restored = false;
+    let metadataReady = false;
+    let resumePosition: number | null = null;
     const savePosition = (position: number) => {
       if (!Number.isFinite(position) || position <= 0) return;
       lastSaved = position;
       void api(`/api/items/${item.id}/progress`, { method: 'POST', body: JSON.stringify({ position }) });
     };
     const restorePosition = () => {
-      const position = Number(item.position);
-      if (restored || !Number.isFinite(position) || position <= 0 || player.duration <= position) return;
-      player.currentTime = position;
+      if (restored || !metadataReady || resumePosition === null || !Number.isFinite(resumePosition) || resumePosition <= 0 || player.duration <= resumePosition) return;
+      player.currentTime = resumePosition;
       restored = true;
     };
     const unsubscribe = player.subscribe(({ currentTime, duration }) => {
@@ -412,18 +413,23 @@ function IntegratedPlayer({ item, recommendations, autoplay, onAutoplayChange, o
         void api(`/api/items/${item.id}/watched`, { method: 'POST', body: JSON.stringify({ watched: true }) }).then(() => onChanged(true));
       }
     });
+    const handleLoadedMetadata = () => { metadataReady = true; restorePosition(); };
     const handlePause = () => savePosition(player.currentTime);
-    player.addEventListener('loaded-metadata', restorePosition);
-    player.addEventListener('can-play', restorePosition);
+    player.addEventListener('loaded-metadata', handleLoadedMetadata);
     player.addEventListener('pause', handlePause);
     const handleEnded = () => { const next = autoplayRef.current ? recommendationsRef.current[0] : undefined; if (next) selectRef.current(next); };
     player.addEventListener('ended', handleEnded);
-    restorePosition();
+    void api(`/api/items/${item.id}/progress`).then((result) => {
+      resumePosition = Number(result.position);
+      restorePosition();
+    }).catch(() => {
+      resumePosition = Number(item.position);
+      restorePosition();
+    });
     return () => {
       savePosition(player.currentTime);
       unsubscribe();
-      player.removeEventListener('loaded-metadata', restorePosition);
-      player.removeEventListener('can-play', restorePosition);
+      player.removeEventListener('loaded-metadata', handleLoadedMetadata);
       player.removeEventListener('pause', handlePause);
       player.removeEventListener('ended', handleEnded);
     };
