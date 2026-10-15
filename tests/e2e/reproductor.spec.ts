@@ -139,6 +139,55 @@ test.describe('reproductor', () => {
     await expect(page.getByRole('heading', { name: 'Apertura 02', level: 1 })).toBeVisible();
   });
 
+  /**
+   * Regresión: con el mini reproductor abierto, abrir otro vídeo a veces
+   * rebotaba al anterior. La causa era un efecto que «sincronizaba» la URL con
+   * la pista actual leyendo un ref ANTES de que el cambio de pista se hubiera
+   * aplicado, así que navegaba de vuelta al vídeo viejo. Aquí se comprueba el
+   * flujo completo: reproducir, cerrar y abrir otro.
+   */
+  test('cambiar de vídeo con el mini reproductor abierto reproduce el nuevo, no el anterior', async ({ page }) => {
+    await goToChannel(page, 'Videos', 'Openings');
+    await page.getByRole('link', { name: 'Apertura 01' }).click();
+    await expect(page.getByRole('heading', { name: 'Apertura 01', level: 1 })).toBeVisible();
+
+    // Reproducir de verdad (el gesto desbloquea el autoplay) y volver a la galería.
+    await page.getByRole('button', { name: 'Play' }).click();
+    await page.getByRole('button', { name: 'Cerrar el reproductor' }).click();
+    await expect(page.locator('.miniplayer')).toBeVisible();
+    await expect(page.locator('.miniplayer')).toContainText('Apertura 01');
+
+    // Abrir otro vídeo desde la galería.
+    await page.getByRole('link', { name: 'Apertura 02' }).click();
+
+    // Se queda en el nuevo: sin mini reproductor, con su título, y la URL en /ver/.
+    await expect(page.locator('.miniplayer')).toHaveCount(0);
+    await expect(page).toHaveURL(/\/ver\/\d+$/);
+    await expect(page.getByRole('heading', { name: 'Apertura 02', level: 1 })).toBeVisible();
+
+    // Y el nuevo se puede reproducir de verdad.
+    await page.getByRole('button', { name: 'Play' }).click();
+    await expect
+      .poll(async () => page.locator('.player-dock video').evaluate((element: HTMLVideoElement) => element.currentTime))
+      .toBeGreaterThan(0);
+  });
+
+  /**
+   * Regresión: la reproducción automática avanza de pista y la URL sigue al
+   * nuevo elemento. Antes lo hacía un segundo efecto de «sincronización»; ahora
+   * navega el propio avance (`onEnded`).
+   */
+  test('al terminar un vídeo, la reproducción automática pasa al siguiente y la URL le sigue', async ({ page }) => {
+    await goToChannel(page, 'Videos', 'Openings');
+    await page.getByRole('button', { name: 'Reproducir todo' }).click();
+    await expect(page.getByRole('heading', { name: 'Apertura 01', level: 1 })).toBeVisible();
+
+    // Gesto para desbloquear el autoplay: el primer vídeo dura 3 s.
+    await page.getByRole('button', { name: 'Play' }).click();
+    await expect(page.getByRole('heading', { name: 'Apertura 02', level: 1 })).toBeVisible({ timeout: 15_000 });
+    await expect(page).toHaveURL(/\/ver\/\d+$/);
+  });
+
   test('marcar como visto se refleja en la rejilla del canal', async ({ page }) => {
     await goToChannel(page, 'Videos', 'Openings');
     await page.getByRole('link', { name: 'Apertura 02' }).click();

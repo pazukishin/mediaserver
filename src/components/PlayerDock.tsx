@@ -22,7 +22,7 @@ import { Sheet } from './Sheet.js';
  * justo lo que hacía la versión anterior.
  */
 export function PlayerDock() {
-  const { current, queue, index, position, duration, playQueue, playerRef } = usePlayer();
+  const { current, queue, index, position, duration, playQueue, playerRef, next } = usePlayer();
   const { autoplay, setAutoplay } = usePreferences();
   const { setFavorite, setWatched } = useLibrary();
   const navigate = useNavigate();
@@ -38,6 +38,12 @@ export function PlayerDock() {
   const closeFullPlayer = () => {
     if (location.key === 'default') navigate('/');
     else navigate(-1);
+  };
+  // El avance automático se dispara desde el reproductor (`onEnded`), no desde
+  // un listener en el elemento: Vidstack no reenvía `ended` como evento DOM al
+  // elemento del reproductor, así que el listener que había no se disparaba.
+  const handleEnded = () => {
+    if (autoplay) next();
   };
 
   return (
@@ -67,6 +73,7 @@ export function PlayerDock() {
               poster={current.kind === 'video' ? (current.artworkUrl ?? undefined) : undefined}
               playsInline
               streamType="on-demand"
+              onEnded={handleEnded}
             >
               <MediaProvider />
               {current.kind === 'video' ? <DefaultVideoLayout icons={defaultLayoutIcons} /> : <AudioControls />}
