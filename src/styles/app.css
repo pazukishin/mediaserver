@@ -7,25 +7,36 @@
    Armazón
    ========================================================================== */
 
+/*
+ * Armazón tipo aplicación: una rejilla de cuatro filas que ocupan toda la
+ * ventana. La barra superior, el mini reproductor y la navegación **tienen su
+ * propia fila**, así que no flotan sobre el contenido; sólo se desplaza la fila
+ * del contenido.
+ *
+ * Antes eran barras fijas superpuestas: las tarjetas pasaban por debajo y un
+ * toque sobre una tarjeta que estuviera tapada lo recibía el mini reproductor
+ * (en móvil abría el vídeo anterior en vez del elegido).
+ */
 .app {
-  display: flex;
-  flex-direction: column;
-  min-height: 100dvh;
-  padding-bottom: calc(var(--bottomnav-h) + var(--safe-bottom));
-}
-
-.app[data-player="mini"] {
-  padding-bottom: calc(var(--bottomnav-h) + 72px + var(--safe-bottom));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "appbar"
+    "content"
+    "miniplayer"
+    "nav";
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .app[data-player="full"] {
-  overflow: hidden;
-  height: 100dvh;
+  /* El reproductor a pantalla completa se pinta encima, con su propia capa. */
+  grid-template-rows: auto minmax(0, 1fr) 0 0;
 }
 
 .appbar {
-  position: sticky;
-  top: 0;
+  grid-area: appbar;
   z-index: 30;
   display: flex;
   align-items: center;
@@ -140,14 +151,14 @@
   display: none;
 }
 
+/* El armazón ya es la rejilla: este envoltorio sólo agrupa en el marcado. */
 .app-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  flex: 1 1 auto;
-  min-height: 0;
+  display: contents;
 }
 
+/* La ÚNICA región que se desplaza. Así nada queda tapado por las barras. */
 .content {
+  grid-area: content;
   min-width: 0;
   width: 100%;
   max-width: var(--content-max);
@@ -156,6 +167,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--s-6);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* Barra lateral: sólo escritorio */
@@ -165,10 +178,7 @@
 
 /* Navegación inferior: móvil y tablet */
 .bottomnav {
-  position: fixed;
-  inset-inline: 0;
-  bottom: 0;
-  z-index: 35;
+  grid-area: nav;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
@@ -239,16 +249,16 @@
 
 @media (min-width: 1024px) {
   .app {
-    display: grid;
     grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
-    grid-template-areas: "sidebar appbar" "sidebar content";
-    padding-bottom: 0;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "sidebar appbar"
+      "sidebar content"
+      "sidebar miniplayer";
   }
 
-  .app[data-player="mini"],
   .app[data-player="full"] {
-    padding-bottom: 0;
+    grid-template-rows: auto minmax(0, 1fr) 0;
   }
 
   .appbar {
@@ -260,10 +270,6 @@
   /* La marca ya está en la barra lateral: no se repite arriba. */
   .appbar-brand {
     display: none;
-  }
-
-  .app-body {
-    display: contents;
   }
 
   .content {
@@ -279,9 +285,7 @@
     padding: var(--s-4) var(--s-3);
     background: var(--surface);
     border-right: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    height: 100dvh;
+    height: 100%;
     overflow-y: auto;
   }
 
@@ -1366,11 +1370,10 @@
    Reproductor
    ========================================================================== */
 
+/* Mini reproductor: ocupa su propia fila del armazón, no flota sobre la rejilla. */
 .miniplayer {
-  position: fixed;
-  inset-inline: var(--s-2);
-  bottom: calc(var(--bottomnav-h) + var(--safe-bottom) + var(--s-2));
-  z-index: 40;
+  grid-area: miniplayer;
+  margin: 0 var(--s-2) var(--s-2);
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) auto;
   align-items: center;
@@ -1380,16 +1383,12 @@
   background: color-mix(in srgb, var(--surface-3) 94%, transparent);
   backdrop-filter: blur(14px);
   border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-overlay);
   animation: slide-up var(--dur) var(--ease);
 }
 
 @media (min-width: 1024px) {
   .miniplayer {
-    inset-inline: auto;
-    left: calc(var(--sidebar-w) + var(--s-5));
-    right: var(--s-5);
-    bottom: var(--s-4);
+    margin: 0 var(--s-5) var(--s-4);
   }
 }
 

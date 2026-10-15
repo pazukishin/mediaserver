@@ -53,19 +53,27 @@ export function useDebounced<T>(value: T, delay = 200): T {
   return debounced;
 }
 
-/** Bloquea el scroll del documento mientras `active`, restaurando la posición. */
+/**
+ * Impide desplazar el fondo mientras hay una capa abierta. El armazón no
+ * desplaza la ventana, sino la región de contenido, así que hay que bloquear
+ * las dos.
+ */
 export function useScrollLock(active: boolean): void {
   useEffect(() => {
     if (!active) return;
     const { body } = document;
+    const content = document.getElementById('contenido');
     const previousOverflow = body.style.overflow;
     const previousPadding = body.style.paddingRight;
+    const previousContentOverflow = content?.style.overflowY ?? '';
     const scrollbar = window.innerWidth - document.documentElement.clientWidth;
     body.style.overflow = 'hidden';
     if (scrollbar > 0) body.style.paddingRight = `${scrollbar}px`;
+    if (content) content.style.overflowY = 'hidden';
     return () => {
       body.style.overflow = previousOverflow;
       body.style.paddingRight = previousPadding;
+      if (content) content.style.overflowY = previousContentOverflow;
     };
   }, [active]);
 }

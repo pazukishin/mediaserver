@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { MiniPlayer } from './components/MiniPlayer.js';
 import { AppBar, BottomNav, Sidebar } from './components/Navigation.js';
 import { ScanSheet } from './components/ScanSheet.js';
 import { EmptyState } from './components/States.js';
@@ -29,7 +30,9 @@ function ScrollToTop() {
     // Sólo al cambiar de ruta: al recargar se respeta la restauración del navegador.
     if (previous.current === pathname) return;
     previous.current = pathname;
-    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    // La región que se desplaza es el contenido, no la ventana: el armazón
+    // reserva filas propias para la barra, el mini reproductor y la navegación.
+    document.getElementById('contenido')?.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   }, [pathname]);
   return null;
 }
@@ -127,6 +130,7 @@ function Shell() {
         </main>
       </div>
 
+      {playerMode === 'mini' && <MiniPlayer />}
       <BottomNav />
       <ScanSheet open={scan.sheetOpen} status={scan.status} onClose={scan.closeSheet} onCancel={() => void scan.cancel()} />
     </div>

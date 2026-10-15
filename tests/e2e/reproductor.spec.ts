@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { goToChannel, login } from './helpers.js';
+import { goToChannel, login, tarjetasTapadas } from './helpers.js';
 
 test.describe('reproductor', () => {
   test.beforeEach(async ({ page }) => {
@@ -40,6 +40,24 @@ test.describe('reproductor', () => {
 
     await page.getByRole('button', { name: 'Cerrar el reproductor' }).click();
     await expect(page.locator('.miniplayer')).toBeVisible();
+  });
+
+  // Regresión: el mini reproductor flotaba sobre la rejilla, así que un toque
+  // sobre una tarjeta que quedara debajo lo recibía la barra: en móvil abría el
+  // vídeo anterior en lugar del elegido y en escritorio el toque se perdía.
+  test('el mini reproductor no tapa ninguna tarjeta de la galería', async ({ page }) => {
+    await goToChannel(page, 'Videos', 'Openings');
+    await page.getByRole('link', { name: 'Apertura 01' }).click();
+    await expect(page.locator('.player-dock[data-mode="full"]')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Cerrar el reproductor' }).click();
+    await expect(page.locator('.miniplayer')).toBeVisible();
+
+    // Pantalla corta: así la rejilla se desplaza de verdad y la comprobación
+    // recorre todas las posiciones de scroll.
+    await page.setViewportSize({ width: 360, height: 480 });
+    await page.waitForTimeout(300);
+    expect(await tarjetasTapadas(page, '.miniplayer')).toEqual([]);
   });
 
   test('al cerrar, la reproducción sigue con el mini reproductor', async ({ page }) => {

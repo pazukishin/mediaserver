@@ -13,7 +13,6 @@ import { isProbablyPlayable, mediaSource } from '../lib/media.js';
 import type { Item } from '../lib/types.js';
 import { Artwork } from './Artwork.js';
 import { Sheet } from './Sheet.js';
-import { useToast } from './Toast.js';
 
 /**
  * Reproductor persistente. El elemento `<MediaPlayer>` vive siempre en el mismo
@@ -23,10 +22,9 @@ import { useToast } from './Toast.js';
  * justo lo que hacía la versión anterior.
  */
 export function PlayerDock() {
-  const { current, queue, index, playing, position, duration, toggle, next, previous, stop, playQueue, hasNext, playerRef } = usePlayer();
+  const { current, queue, index, position, duration, playQueue, playerRef } = usePlayer();
   const { autoplay, setAutoplay } = usePreferences();
   const { setFavorite, setWatched } = useLibrary();
-  const { notify } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const routeMatch = useMatch('/ver/:id');
@@ -37,7 +35,6 @@ export function PlayerDock() {
   const mode = routeMatch ? 'full' : 'mini';
   const source = mediaSource(current);
   const playable = isProbablyPlayable(current);
-  const progressRatio = duration > 0 ? Math.min(1, position / duration) : 0;
   const closeFullPlayer = () => {
     if (location.key === 'default') navigate('/');
     else navigate(-1);
@@ -165,51 +162,6 @@ export function PlayerDock() {
           </>
         )}
       </div>
-
-      {mode === 'mini' && (
-        <div className="miniplayer">
-          <button
-            type="button"
-            className="miniplayer-open"
-            onClick={() => navigate(`/ver/${current.id}`)}
-            aria-label={`Abrir el reproductor: ${current.title}`}
-          >
-            <Artwork kind={current.kind} src={current.artworkUrl} eager />
-          </button>
-          <button type="button" className="miniplayer-info" onClick={() => navigate(`/ver/${current.id}`)}>
-            <span className="t">{current.title}</span>
-            <span className="s">
-              {playing ? 'Sonando' : 'En pausa'}
-              {duration > 0 ? ` · ${formatClock(position) || '0:00'} / ${formatClock(duration)}` : ` · ${current.channel}`}
-            </span>
-          </button>
-          <div className="miniplayer-actions">
-            <button type="button" className="icon-btn" onClick={previous} aria-label="Anterior">
-              <IconSkipPrev />
-            </button>
-            <button type="button" className="icon-btn" onClick={toggle} aria-label={playing ? 'Pausar' : 'Reproducir'}>
-              {playing ? <IconPause /> : <IconPlay />}
-            </button>
-            <button type="button" className="icon-btn" onClick={next} disabled={!hasNext} aria-label="Siguiente">
-              <IconSkipNext />
-            </button>
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={() => {
-                stop();
-                notify('Reproducción detenida');
-              }}
-              aria-label="Detener la reproducción"
-            >
-              <IconClose />
-            </button>
-          </div>
-          <span className="miniplayer-progress" aria-hidden="true">
-            <span style={{ display: 'block', height: '100%', width: `${progressRatio * 100}%`, background: 'var(--accent)' }} />
-          </span>
-        </div>
-      )}
 
       <Sheet open={queueOpen} title="Cola de reproducción" onClose={() => setQueueOpen(false)}>
         <div className="queue-list">

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login } from './helpers.js';
+import { login, tarjetasTapadas } from './helpers.js';
 
 test.describe('escritorio', () => {
   test.beforeEach(async ({ page }) => {
@@ -46,6 +46,19 @@ test.describe('escritorio', () => {
     await expect(page).toHaveURL(/q=Apertura/);
     await expect(page.getByRole('heading', { name: 'Apertura 02' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Apertura 01' })).toHaveCount(0);
+  });
+
+  test('el mini reproductor no tapa ninguna tarjeta en escritorio', async ({ page }) => {
+    await page.goto('/c/Videos/Openings');
+    await page.getByRole('link', { name: 'Apertura 01' }).click();
+    await expect(page.locator('.player-dock[data-mode="full"]')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Cerrar el reproductor' }).click();
+    await expect(page.locator('.miniplayer')).toBeVisible();
+
+    await page.setViewportSize({ width: 1200, height: 420 });
+    await page.waitForTimeout(300);
+    expect(await tarjetasTapadas(page, '.miniplayer')).toEqual([]);
   });
 
   test('las categorías aparecen en la barra lateral', async ({ page }) => {
