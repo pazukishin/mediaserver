@@ -1,0 +1,50 @@
+# Stack de Portainer para MediaServer 2.0 usando la imagen ya importada.
+#
+# Este fichero NO construye nada: sólo ejecuta la imagen. Sirve de referencia
+# para pegar en Portainer → Stacks → Add stack → Web editor.
+#
+# Lo más sencillo, si ya tienes un stack funcionando con la versión anterior:
+# **edita su imagen** y pon `pazus-mediaserver:2.0.0`. Así conservas volúmenes,
+# variables y ajustes, y para volver atrás sólo tienes que devolver la etiqueta
+# `latest`.
+#
+# Si prefieres crear un stack nuevo, ajusta las dos rutas de `volumes` a las de
+# tu NAS y para el stack viejo antes de arrancar éste (los dos publican el mismo
+# puerto).
+
+services:
+  mediaserver:
+    image: pazus-mediaserver:2.0.0
+    container_name: mediaserver
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      MEDIA_DIR: /media
+      DATA_DIR: /data
+      MEDIA_USER: ${MEDIA_USER:-media}
+      # Sin valor por defecto a propósito: el servidor se niega a arrancar con
+      # credenciales de ejemplo. Defínelas en el stack (Environment variables).
+      MEDIA_PASSWORD: ${MEDIA_PASSWORD:?define MEDIA_PASSWORD}
+      SESSION_SECRET: ${SESSION_SECRET:?define SESSION_SECRET (32 caracteres o más)}
+      # 1 cuando haya un proxy inverso con HTTPS delante.
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+      SCAN_CONCURRENCY: ${SCAN_CONCURRENCY:-2}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      # AJUSTA ESTAS DOS RUTAS a las de tu NAS, las mismas que use tu stack
+      # actual. La biblioteca va en sólo lectura; el contenedor jamás escribe
+      # en ella.
+      - /volume1/media:/media:ro
+      - /volume1/docker/mediaserver/data:/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped

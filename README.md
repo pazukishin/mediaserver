@@ -143,6 +143,31 @@ El contenedor monta `./media` en `/media` (sólo lectura) y `./data` en `/data`,
 publica el puerto 3000. Trae `HEALTHCHECK`, así que Portainer y `docker ps`
 muestran el estado real del servicio.
 
+### Con Portainer y una imagen ya construida
+
+Si prefieres no construirlo en el NAS, guarda la imagen en un fichero y súbela:
+
+```bash
+docker build --provenance=false -t pazus-mediaserver:2.0.0 .
+docker save -o pazus-mediaserver-2.0.0.tar pazus-mediaserver:2.0.0
+```
+
+El `--provenance=false` evita las atestaciones de BuildKit, que dan problemas al
+importar en Docker antiguos.
+
+1. Portainer → **Images** → *Import* → selecciona el `.tar`.
+2. En tu stack, cambia la imagen a `pazus-mediaserver:2.0.0` y actualiza.
+
+En [deploy/portainer-stack.yml](deploy/portainer-stack.yml) hay una plantilla del
+stack sólo con la imagen (sin `build:`), con el healthcheck y las variables.
+
+> Para volver atrás basta con devolver la etiqueta anterior en el stack: la
+> imagen vieja sigue en el NAS.
+
+**Al actualizar desde la 1.2.2**, el servidor migra la base de datos al
+arrancar y guarda una copia `mediaserver.db.bak-<fecha>` en `DATA_DIR` antes de
+tocarla. Aun así, conviene copiar `data/` antes del primer arranque.
+
 ## Uso
 
 - **Inicio**: «Seguir viendo», lo añadido recientemente y las categorías.
