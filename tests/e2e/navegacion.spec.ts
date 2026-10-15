@@ -68,6 +68,32 @@ test.describe('navegación en móvil', () => {
     }
   });
 
+  // Regresión: al desplegar la búsqueda, el envoltorio del campo no podía
+  // encogerse por debajo del ancho intrínseco del input. En un móvil de 360 px
+  // (el ancho más común en Android) la barra desbordaba 25 px y arrastraba el
+  // ancho de toda la página, que es lo que se veía como un salto de layout.
+  test('el buscador desplegado no ensancha la página', async ({ page }) => {
+    for (const ancho of [412, 360, 320]) {
+      await page.setViewportSize({ width: ancho, height: 800 });
+      await page.goto('/c/Videos/Openings');
+      await expect(page.getByRole('heading', { name: 'Openings', level: 1 })).toBeVisible();
+      expect(await horizontalOverflow(page), `con la búsqueda cerrada a ${ancho}px`).toBeLessThanOrEqual(0);
+
+      await page.getByRole('button', { name: 'Buscar' }).click();
+      await expect(page.getByRole('searchbox')).toBeVisible();
+      expect(await horizontalOverflow(page), `con la búsqueda abierta a ${ancho}px`).toBeLessThanOrEqual(0);
+    }
+  });
+
+  // Con menos de 16px, iOS amplía la página al enfocar el campo: el zoom se
+  // percibe como que la página cambia de ancho.
+  test('los campos llevan 16px en pantallas táctiles', async ({ page }) => {
+    await page.goto('/c/Videos/Openings');
+    await page.getByRole('button', { name: 'Buscar' }).click();
+    const tamano = await page.getByRole('searchbox').evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize));
+    expect(tamano).toBeGreaterThanOrEqual(16);
+  });
+
   test('los filtros del canal cambian lo que se ve', async ({ page }) => {
     await page.goto('/c/Videos/Openings');
     await expect(page.getByRole('heading', { name: 'Apertura 01' })).toBeVisible();

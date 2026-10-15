@@ -72,10 +72,16 @@
   flex: 0 0 auto;
 }
 
-/* En móvil el buscador es un icono que lleva a /buscar; a partir de 600px es un
- * campo en línea. Nada de detectar el dispositivo por user-agent. */
+/* En móvil el buscador vive detrás de la lupa; a partir de 600px el campo está
+ * siempre en la barra. Nada de detectar el dispositivo por user-agent.
+ *
+ * `min-width: 0` es imprescindible: sin él, este envoltorio (que es un elemento
+ * flex) no puede encogerse por debajo del ancho intrínseco de su input, y al
+ * desplegar la búsqueda en un móvil de 360px la barra desbordaba 25px y
+ * arrastraba con ella el ancho de toda la página. */
 .appbar-inline-search {
   display: none;
+  min-width: 0;
 }
 
 .sub {
@@ -97,6 +103,7 @@
   .appbar-inline-search {
     display: block;
     flex: 1 1 auto;
+    min-width: 0;
     max-width: 440px;
     margin-left: var(--s-3);
   }
@@ -112,6 +119,7 @@
 .appbar[data-search="on"] .appbar-inline-search {
   display: block;
   flex: 1 1 auto;
+  min-width: 0;
   max-width: none;
   margin-left: 0;
 }
@@ -480,7 +488,7 @@
   background: none;
   /* Sin `outline: none`: el foco por teclado tiene que verse. El contorno lo
    * aporta la regla global `:focus-visible` de base.css. */
-  font-size: var(--fs-base);
+  font-size: var(--fs-field);
 }
 
 .field input::placeholder {
@@ -619,7 +627,7 @@
   border-radius: var(--r-sm);
   background: var(--surface-2);
   border: 1px solid var(--border);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-field);
 }
 
 .switch {

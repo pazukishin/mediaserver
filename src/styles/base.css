@@ -159,8 +159,7 @@ button {
   gap: var(--s-4);
 }
 
-/* Todo el movimiento se apaga si el usuario lo pide. */
-@media (prefers-reduced-motion: reduce) {
+/* Todo el movimiento se apaga si el usuario lo pide. */ @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
