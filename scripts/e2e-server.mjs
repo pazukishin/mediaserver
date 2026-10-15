@@ -72,6 +72,10 @@ function ensureFixtures() {
   // Audio sin carátula embebida: debe caer en la imagen de la carpeta.
   // El nombre lleva tilde a propósito: la búsqueda debe ignorar acentos.
   ffmpeg(['-f', 'lavfi', '-i', 'sine=frequency=330:duration=2', '-c:a', 'libmp3lame', join(MEDIA, 'Audio/Canciones/Canción Uno.mp3')]);
+  // Los contenedores que el reproductor no reconoce de fábrica: declararlos mal
+  // dejaba el audio sin reproductor. Están aquí para que la suite lo note.
+  ffmpeg(['-f', 'lavfi', '-i', 'sine=frequency=440:duration=2', '-c:a', 'aac', join(MEDIA, 'Audio/Canciones/Canción Tres.m4a')]);
+  ffmpeg(['-f', 'lavfi', '-i', 'sine=frequency=660:duration=2', '-c:a', 'pcm_s16le', join(MEDIA, 'Audio/Canciones/Canción Cuatro.wav')]);
   cover(join(MEDIA, 'Audio/Canciones/cover.jpg'), 'purple');
   // Audio con carátula embebida: debe preferirla a la de la carpeta.
   ffmpeg([

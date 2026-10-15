@@ -6,6 +6,30 @@ test.describe('reproductor', () => {
     await login(page);
   });
 
+  /**
+   * Regresión: `.m4a`, `.aac` y `.wav` se declaraban como `audio/object`, que en
+   * el reproductor sólo vale para URLs `blob:`. Con una URL normal no montaba
+   * ningún elemento de medios, así que el archivo no sonaba y el botón de
+   * reproducir lanzaba «media not ready».
+   */
+  test('los formatos que el reproductor no reconoce de fábrica también suenan', async ({ page }) => {
+    for (const archivo of ['Canción Tres', 'Canción Cuatro']) {
+      await goToChannel(page, 'Audio', 'Canciones');
+      await page.getByRole('link', { name: archivo, exact: true }).click();
+
+      const media = page.locator('.player-dock audio, .player-dock video');
+      await expect(media, `${archivo} no montó el reproductor`).toHaveCount(1);
+      await expect
+        .poll(async () => media.evaluate((element: HTMLMediaElement) => element.readyState), { message: `${archivo} no cargó` })
+        .toBeGreaterThanOrEqual(2);
+
+      await page.getByRole('button', { name: 'Reproducir' }).first().click();
+      await expect
+        .poll(async () => media.evaluate((element: HTMLMediaElement) => element.currentTime), { message: `${archivo} no avanza` })
+        .toBeGreaterThan(0);
+    }
+  });
+
   test('abrir un archivo lleva a su ruta y muestra el reproductor completo', async ({ page }) => {
     await goToChannel(page, 'Videos', 'Openings');
     await page.getByRole('link', { name: 'Apertura 01' }).click();

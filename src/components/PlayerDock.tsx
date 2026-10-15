@@ -1,4 +1,4 @@
-import { MediaPlayer, MediaProvider } from '@vidstack/react';
+import { MediaPlayer, MediaProvider, type PlayerSrc } from '@vidstack/react';
 import { DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/layouts/default';
 import { useState } from 'react';
 import { useLocation, useMatch, useNavigate } from 'react-router-dom';
@@ -58,7 +58,11 @@ export function PlayerDock() {
               ref={playerRef}
               className="player-media"
               title={current.title}
-              src={source}
+              // El `.d.ts` de Vidstack se queda corto: en ejecución reconoce
+              // `audio/mp4` (y `audio/m4a`, `audio/mp4a`), pero su unión pública
+              // no los declara. Se usa el tipo real del archivo —que es lo que
+              // el reproductor comprueba— y el ajuste de tipos se hace aquí.
+              src={source as unknown as PlayerSrc}
               viewType={current.kind}
               poster={current.kind === 'video' ? (current.artworkUrl ?? undefined) : undefined}
               playsInline
