@@ -72,4 +72,27 @@ describe('servido del cliente compilado', () => {
     const health = await built.app.inject({ method: 'GET', url: '/api/health' });
     expect(health.statusCode).toBe(200);
   });
+
+  /**
+   * Regresión: `helmet` añadía por defecto `upgrade-insecure-requests` y HSTS.
+   * La aplicación está pensada para servirse por HTTP en una red local, así que
+   * la primera obligaba al navegador a pedir los recursos por HTTPS a un
+   * servidor que sólo habla HTTP y la página quedaba en negro. En `localhost`
+   * no se notaba, porque el navegador lo considera origen seguro y no tiene
+   * nada que «ascender»; desde la LAN rompía el despliegue entero.
+   */
+  test('la seguridad no fuerza HTTPS, porque el servidor es HTTP en la red local', async () => {
+    built = await createTestApp({ staticDir: makeFakeBuild() });
+
+    const root = await built.app.inject({ method: 'GET', url: '/' });
+    expect(root.statusCode).toBe(200);
+    expect(root.headers['content-security-policy']).not.toContain('upgrade-insecure-requests');
+    expect(root.headers['strict-transport-security']).toBeUndefined();
+
+    // Y sigue habiendo CSP, que es lo que de verdad protege.
+    const csp = String(root.headers['content-security-policy']);
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).toContain("frame-ancestors 'none'");
+  });
 });

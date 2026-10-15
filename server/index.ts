@@ -129,6 +129,16 @@ export async function buildApp(config: AppConfig = loadConfig()): Promise<BuiltA
 
   await app.register(cookie, { secret: config.sessionSecret });
   await app.register(helmet, {
+    // HSTS y `upgrade-insecure-requests` son hardening para sitios HTTPS, y
+    // aquí rompen la aplicación: está pensada para servirse por HTTP en una red
+    // local. `upgrade-insecure-requests` hace que el navegador pida los
+    // recursos por HTTPS aunque el servidor sólo hable HTTP, y el resultado es
+    // una pantalla en negro. En `localhost` no se nota, porque el navegador lo
+    // considera origen seguro y no tiene nada que «ascender»; desde la LAN sí.
+    // Lo mismo con HSTS: es por host, no por puerto, así que una sola visita
+    // por HTTPS obligaría a HTTPS en todos los puertos de esa máquina.
+    // Si algún día se pone detrás de un proxy con TLS, se activan aquí.
+    strictTransportSecurity: false,
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
@@ -140,6 +150,7 @@ export async function buildApp(config: AppConfig = loadConfig()): Promise<BuiltA
         connectSrc: ["'self'"],
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"],
+        upgradeInsecureRequests: null,
       },
     },
   });

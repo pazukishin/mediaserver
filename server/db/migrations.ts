@@ -114,6 +114,19 @@ export const migrations: Migration[] = [
       db.prepare('INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(2, new Date().toISOString());
     },
   },
+  {
+    version: 3,
+    description: 'Deducir la extensión de los archivos heredados de 1.2.2',
+    run: (db) => {
+      // La 1.2.2 no guardaba la extensión, así que las filas migradas quedaban
+      // con `extension = ''`. La aplicación decide con ese dato si el navegador
+      // puede reproducir el archivo, de modo que sin esto TODOS los vídeos
+      // aparecían como «este formato no se reproduce». La extensión se deduce
+      // de la propia ruta: no hace falta leer la biblioteca.
+      backfillExtensions(db);
+      db.prepare('INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(3, new Date().toISOString());
+    },
+  },
 ];
 
 /** Añade las columnas que no existían en 1.2.2 y rellena lo imprescindible. */
@@ -149,6 +162,27 @@ function backfillSearchKeys(db: Database): void {
   const update = db.prepare('UPDATE media_items SET search_key = ? WHERE id = ?');
   const transaction = db.transaction(() => {
     for (const row of rows) update.run(normalizeSearchKey(row.title ?? ''), row.id);
+  });
+  transaction();
+}
+
+/**
+ * Rellena `extension` a partir de la ruta. Es un dato que siempre estuvo ahí
+ * (el nombre del archivo) pero que la 1.2.2 no guardaba, así que las filas
+ * migradas quedaban sin él y la aplicación las daba por no reproducibles.
+ */
+function backfillExtensions(db: Database): void {
+  const rows = db.prepare("SELECT id, path FROM media_items WHERE extension IS NULL OR extension = ''").all() as Array<{
+    id: number;
+    path: string | null;
+  }>;
+  if (rows.length === 0) return;
+  const update = db.prepare('UPDATE media_items SET extension = ? WHERE id = ?');
+  const transaction = db.transaction(() => {
+    for (const row of rows) {
+      const extension = /(\.[A-Za-z0-9]+)$/.exec(row.path ?? '')?.[1];
+      if (extension) update.run(extension.toLowerCase(), row.id);
+    }
   });
   transaction();
 }

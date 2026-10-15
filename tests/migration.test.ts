@@ -109,7 +109,7 @@ describe('migración desde el esquema 1.2.2', () => {
     const { db, migration } = openDatabase(config.dbPath);
     handles.push(db);
     expect(migration.migrated).toBe(true);
-    expect(migration.applied).toEqual([1, 2]);
+    expect(migration.applied).toEqual([1, 2, 3]);
 
     const rows = db
       .prepare('SELECT path, position, duration, watched, favorite, updated_at FROM playback_state ORDER BY path')
@@ -155,13 +155,66 @@ describe('migración desde el esquema 1.2.2', () => {
     ).toEqual({
       total: 0,
     });
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }]);
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([
+      { version: 1 },
+      { version: 2 },
+      { version: 3 },
+    ]);
   });
 
   // Regresión: la `sessions` de 1.2.2 no tiene `created_at` ni `user_agent`, y
   // como el esquema nuevo la crea con `CREATE TABLE IF NOT EXISTS`, sobrevivía
   // intacta. El login devolvía 500 («table sessions has no column named
   // created_at») y la aplicación quedaba inservible tras actualizar.
+
+  /**
+   * Regresión: la 1.2.2 no guardaba la extensión, así que las filas migradas
+   * quedaban con `extension = ''`. La aplicación decide con ese dato si el
+   * navegador sabe reproducir el archivo, de modo que sin él TODOS los vídeos
+   * salían como «este formato no se reproduce» hasta ejecutar un escaneo.
+   */
+  it('deduce la extensión de la ruta, para que lo heredado se pueda reproducir', () => {
+    const config = createTestConfig();
+    createLegacyDatabase(config.dbPath);
+
+    // Un archivo con la extensión en mayúsculas, como los hay en una biblioteca real.
+    const legacy = new Database(config.dbPath);
+    legacy
+      .prepare(
+        'INSERT INTO media_items (id, path, category, channel, kind, title, duration, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        4,
+        'Videos/Extras/MAYUS.MKV',
+        'Videos',
+        'Extras',
+        'video',
+        'Mayúsculas',
+        0,
+        '2026-08-04T10:00:00.000Z',
+        '2026-08-04T10:00:00.000Z',
+      );
+    legacy.close();
+
+    const { db } = openDatabase(config.dbPath);
+    handles.push(db);
+
+    const rows = db.prepare('SELECT path, extension FROM media_items ORDER BY path').all() as Array<{
+      path: string;
+      extension: string;
+    }>;
+    expect(rows).toEqual([
+      { path: 'Audio/Pokemon/Canción.mp3', extension: '.mp3' },
+      { path: 'Videos/Extras/MAYUS.MKV', extension: '.mkv' },
+      { path: 'Videos/Openings/dos.mp4', extension: '.mp4' },
+      { path: 'Videos/Openings/uno.mp4', extension: '.mp4' },
+    ]);
+
+    // Y ninguna fila se queda sin extensión.
+    expect(db.prepare("SELECT COUNT(*) AS total FROM media_items WHERE extension IS NULL OR extension = ''").get()).toEqual({
+      total: 0,
+    });
+  });
   it('deja la tabla de sesiones utilizable: el login funciona tras migrar', async () => {
     const config = createTestConfig();
     createLegacyDatabase(config.dbPath);
