@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { basename, extname, join, resolve, sep } from 'node:path';
 import { IMAGE_EXTENSIONS } from '../repositories/types.js';
 import { sha256 } from '../security.js';
@@ -74,7 +74,56 @@ function firstFolderImage(directory: string): string | null {
       if (found) return found;
     }
   }
-  return null;
+  return bestFolderImage(directory);
+}
+
+/** Palabras que suelen indicar contraportada, libreto o el propio CD. */
+const DISCOURAGED_IMAGE_WORDS = ['back', 'rear', 'trasera', 'inlay', 'disc', 'cd', 'dvd', 'booklet', 'libreto', 'spine', 'lomo'];
+
+function plainText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function words(value: string): string[] {
+  return plainText(value)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+/**
+ * Última opción cuando no hay `cover.jpg` ni una imagen con el mismo nombre que
+ * el archivo: elegir entre las imágenes de la carpeta la que más se parezca al
+ * nombre de la carpeta, penalizando las que suenan a contraportada.
+ *
+ * Hace falta porque muchas bibliotecas reales nombran la portada como el álbum
+ * (`pokemon total.jpg`) en vez de `cover.jpg`, y sin esto los audios se quedaban
+ * sin carátula aunque la tuvieran al lado.
+ */
+function bestFolderImage(directory: string): string | null {
+  let names: string[];
+  try {
+    names = readdirSync(directory).filter((name) => IMAGE_EXTENSIONS.includes(extname(name).toLowerCase()));
+  } catch {
+    return null;
+  }
+  if (names.length === 0) return null;
+
+  const folderWords = new Set(words(basename(directory)));
+  let best: { file: string; score: number } | null = null;
+
+  for (const name of names) {
+    const stem = basename(name, extname(name));
+    const stemText = plainText(stem);
+    const discouraged = DISCOURAGED_IMAGE_WORDS.some((word) => stemText.includes(word));
+    const overlap = words(stem).filter((word) => word.length > 2 && folderWords.has(word)).length;
+    const score = (discouraged ? -10 : 0) + overlap;
+    if (!best || score > best.score) best = { file: join(directory, name), score };
+  }
+
+  return best?.file ?? null;
 }
 
 function siblingImage(sourcePath: string): string | null {

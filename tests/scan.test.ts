@@ -1,7 +1,7 @@
 import { rmSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestApp, login } from './helpers/app.js';
-import { makeTestAudio, writeFixtureFile } from './helpers/fixtures.js';
+import { makeTestAudio, makeTestImage, makeTestVideo, writeFixtureFile } from './helpers/fixtures.js';
 
 const openApps: Array<() => Promise<void>> = [];
 
@@ -91,7 +91,8 @@ describe('POST /api/scan y estado', () => {
 describe('escaneo incremental', () => {
   it('no reprocesa lo que no ha cambiado, sí lo que cambia y conserva el id', async () => {
     const ctx = await setup();
-    writeFixtureFile(ctx.config.mediaDir, 'Videos/Openings/uno.mp4');
+    // Vídeo real: así se genera carátula y el segundo escaneo puede saltárselo.
+    expect(makeTestVideo(`${ctx.config.mediaDir}/Videos/Openings/uno.mp4`)).toBe(true);
     await scan(ctx);
     const first = (await ctx.app.inject({ method: 'GET', url: '/api/items', headers: { cookie: ctx.cookie } })).json();
     const item = first.items[0];
@@ -113,6 +114,30 @@ describe('escaneo incremental', () => {
     const stillOne = (await ctx.app.inject({ method: 'GET', url: '/api/items', headers: { cookie: ctx.cookie } })).json();
     expect(stillOne.total).toBe(1);
     expect(stillOne.items[0].id).toBe(item.id);
+  });
+
+  // Regresión: las filas migradas de 1.2.2 se quedaban sin carátula para
+  // siempre, porque el escaneo incremental las daba por buenas y no volvía a
+  // intentarlo aunque la portada estuviera (o apareciera) en la carpeta.
+  it('reintenta los elementos sin carátula hasta que aparece una', async () => {
+    const ctx = await setup();
+    const audio = `${ctx.config.mediaDir}/Audio/Pokemon/cancion.mp3`;
+    expect(makeTestAudio(audio)).toBe(true);
+
+    await scan(ctx);
+    const first = (await ctx.app.inject({ method: 'GET', url: '/api/items', headers: { cookie: ctx.cookie } })).json();
+    expect(first.items[0].artworkUrl).toBeNull();
+
+    // La portada del álbum aparece DESPUÉS del primer escaneo, con el nombre
+    // del disco y no `cover.jpg`.
+    expect(makeTestImage(`${ctx.config.mediaDir}/Audio/Pokemon/pokemon total.jpg`)).toBe(true);
+    await scan(ctx);
+
+    const second = (await ctx.app.inject({ method: 'GET', url: '/api/items', headers: { cookie: ctx.cookie } })).json();
+    expect(second.items[0].artworkUrl).not.toBeNull();
+    const artwork = await ctx.app.inject({ method: 'GET', url: second.items[0].artworkUrl, headers: { cookie: ctx.cookie } });
+    expect(artwork.statusCode).toBe(200);
+    expect(artwork.headers['content-type']).toBe('image/jpeg');
   });
 
   it('elimina del catálogo los ficheros ausentes conservando su estado por path', async () => {

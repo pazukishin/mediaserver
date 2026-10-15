@@ -33,6 +33,25 @@ const LEGACY_STATE_TABLES = ['playback_state', 'playback_by_path', 'playback_his
 
 const LEGACY_SUFFIX = '_legacy_122';
 
+/** Columnas que debe tener la tabla de sesiones del esquema 2.0. */
+const SESSIONS_COLUMNS = ['token_hash', 'created_at', 'expires_at', 'user_agent'] as const;
+
+/**
+ * La `sessions` de 1.2.2 sólo tenía `token_hash` y `expires_at`. Como el esquema
+ * nuevo la crea con `CREATE TABLE IF NOT EXISTS`, la tabla vieja sobrevivía
+ * intacta y el login reventaba con «table sessions has no column named
+ * created_at»: la aplicación quedaba inservible justo después de actualizar.
+ *
+ * Las sesiones son desechables, así que se tira la tabla y se recrea: al
+ * actualizar, todo el mundo vuelve a entrar.
+ */
+function repairLegacySessions(db: Database): void {
+  if (!existingTables(db).has('sessions')) return;
+  const columns = new Set((db.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>).map((column) => column.name));
+  if (SESSIONS_COLUMNS.every((column) => columns.has(column))) return;
+  db.exec('DROP TABLE sessions');
+}
+
 /** Nombre temporal de una tabla antigua; `null` si no existe. */
 function legacyName(tables: Set<string>, table: string): string | null {
   return tables.has(table) ? `${table}${LEGACY_SUFFIX}` : null;
@@ -70,6 +89,9 @@ export const migrations: Migration[] = [
       for (const table of LEGACY_STATE_TABLES) {
         if (tables.has(table)) db.exec(`ALTER TABLE ${table} RENAME TO ${table}${LEGACY_SUFFIX}`);
       }
+      // La `sessions` antigua no se puede renombrar a lo bruto: hay que quitarla
+      // para que `CREATE TABLE IF NOT EXISTS` cree la nueva.
+      repairLegacySessions(db);
       db.exec(TABLES_SQL);
       backfillItemColumns(db);
       db.exec(INDEXES_SQL);
@@ -78,6 +100,18 @@ export const migrations: Migration[] = [
       // queda copiado como .bak-<ISO>: las tablas temporales se descartan.
       for (const table of LEGACY_STATE_TABLES) db.exec(`DROP TABLE IF EXISTS ${table}${LEGACY_SUFFIX}`);
       db.prepare('INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(1, new Date().toISOString());
+    },
+  },
+  {
+    version: 2,
+    description: 'Recrear la tabla de sesiones heredada de 1.2.2',
+    run: (db) => {
+      // Red de seguridad para las bases que ya pasaron por la v1 antes de este
+      // arreglo: corregir la v1 no basta, porque no se vuelve a ejecutar.
+      repairLegacySessions(db);
+      db.exec(TABLES_SQL);
+      db.exec(INDEXES_SQL);
+      db.prepare('INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(2, new Date().toISOString());
     },
   },
 ];

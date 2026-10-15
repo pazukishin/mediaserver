@@ -1,4 +1,5 @@
 import type { Dirent } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { readdir, stat } from 'node:fs/promises';
 import { extname, join, relative } from 'node:path';
 import type { Database } from 'better-sqlite3';
@@ -196,9 +197,23 @@ export function createScanner(deps: ScannerDeps): Scanner {
     return map;
   }
 
+  /**
+   * La carátula registrada no sirve: no hay ninguna, o el fichero ya no está en
+   * `covers/` (caché borrada, índice regenerado…).
+   */
+  function coverOnDisk(existing: ExistingItem): boolean {
+    return existing.cover !== null && existing.cover !== '' && existsSync(join(deps.coversDir, existing.cover));
+  }
+
   function isUnchanged(file: ScannedFile, existing: ExistingItem | undefined): boolean {
     if (!existing) return false;
-    return existing.fileMtime === file.fileMtimeMs && existing.sizeBytes === file.sizeBytes && existing.kind === file.kind;
+    const sameFile = existing.fileMtime === file.fileMtimeMs && existing.sizeBytes === file.sizeBytes && existing.kind === file.kind;
+    // Un elemento sin carátula se reintenta aunque el fichero no haya cambiado:
+    // así se recuperan las carátulas de una biblioteca migrada y se recoge una
+    // portada añadida a la carpeta después del primer escaneo. A cambio, un
+    // fichero que no puede tener carátula se reprocesa en cada escaneo (es
+    // barato: ffprobe y, como mucho, un ffmpeg que falla enseguida).
+    return sameFile && coverOnDisk(existing);
   }
 
   async function processFile(file: ScannedFile, existing: ExistingItem | undefined, context: CoverContext): Promise<ScannerPiece> {

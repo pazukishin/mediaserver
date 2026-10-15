@@ -3,10 +3,12 @@
  * nueva entrada en `server/db/migrations.ts`, nunca editando este fichero.
  *
  * `TABLES_SQL` usa `CREATE TABLE IF NOT EXISTS`, así que sobre una base 1.2.2
- * respeta las tablas antiguas; `backfillItemColumns` añade las columnas que
- * falten y sólo después se crean los índices (`INDEXES_SQL`).
+ * respeta las tablas antiguas. Ojo: eso también significa que una tabla que ya
+ * exista con otro juego de columnas NO se corrige sola (le pasó a `sessions`,
+ * ver la migración 2); hay que arreglarla explícitamente antes de crear el
+ * esquema.
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS media_items (

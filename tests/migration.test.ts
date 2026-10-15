@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDatabase } from '../server/db/index.js';
 import { hasLegacySchema, normalizeSearchKey } from '../server/db/migrations.js';
+import { createTestApp } from './helpers/app.js';
 import { createTestConfig } from './helpers/fixtures.js';
 
 const handles: Array<{ close: () => void }> = [];
@@ -108,7 +109,7 @@ describe('migración desde el esquema 1.2.2', () => {
     const { db, migration } = openDatabase(config.dbPath);
     handles.push(db);
     expect(migration.migrated).toBe(true);
-    expect(migration.applied).toEqual([1]);
+    expect(migration.applied).toEqual([1, 2]);
 
     const rows = db
       .prepare('SELECT path, position, duration, watched, favorite, updated_at FROM playback_state ORDER BY path')
@@ -154,7 +155,44 @@ describe('migración desde el esquema 1.2.2', () => {
     ).toEqual({
       total: 0,
     });
-    expect(db.prepare('SELECT version FROM schema_migrations').all()).toEqual([{ version: 1 }]);
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY version').all()).toEqual([{ version: 1 }, { version: 2 }]);
+  });
+
+  // Regresión: la `sessions` de 1.2.2 no tiene `created_at` ni `user_agent`, y
+  // como el esquema nuevo la crea con `CREATE TABLE IF NOT EXISTS`, sobrevivía
+  // intacta. El login devolvía 500 («table sessions has no column named
+  // created_at») y la aplicación quedaba inservible tras actualizar.
+  it('deja la tabla de sesiones utilizable: el login funciona tras migrar', async () => {
+    const config = createTestConfig();
+    createLegacyDatabase(config.dbPath);
+
+    const { app, close } = await createTestApp(config);
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'content-type': 'application/json' },
+      payload: { username: 'media', password: 'contrasena-de-prueba' },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['set-cookie']).toBeDefined();
+
+    const cookie = String(response.headers['set-cookie']).split(';')[0] ?? '';
+    const session = await app.inject({ method: 'GET', url: '/api/session', headers: { cookie } });
+    expect(session.json()).toMatchObject({ authenticated: true });
+
+    await close();
+  });
+
+  it('descarta las sesiones antiguas al migrar: nadie queda dentro con un token viejo', () => {
+    const config = createTestConfig();
+    createLegacyDatabase(config.dbPath);
+    const { db } = openDatabase(config.dbPath);
+    handles.push(db);
+
+    // La sesión 'viejo' del esquema 1.2.2 no sobrevive.
+    expect(db.prepare('SELECT COUNT(*) AS total FROM sessions').get()).toEqual({ total: 0 });
+    const columns = new Set((db.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>).map((column) => column.name));
+    expect([...columns].sort()).toEqual(['created_at', 'expires_at', 'token_hash', 'user_agent']);
   });
 
   it('hace copia de seguridad del .db antes de migrar', () => {
