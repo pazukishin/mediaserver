@@ -210,6 +210,8 @@ tiempo antes de tocar nada. Aun así, **haz copias de seguridad de `data/`**.
 
 ## Desarrollo
 
+Los guiones usan `pnpm` (el proyecto trae `packageManager: pnpm@10`):
+
 ```bash
 pnpm dev          # servidor + Vite con recambio en caliente
 pnpm build        # comprobación de tipos + build de producción
@@ -222,6 +224,25 @@ pnpm icons        # regenera los PNG de la PWA desde los SVG
 ```
 
 Antes de dar algo por terminado: `pnpm typecheck && pnpm test && pnpm lint && pnpm build`.
+
+### Si no tienes pnpm instalado
+
+Los guiones son atajos; con Node 22+ se puede hacer lo mismo a pelo. `node` hace
+de lanzador y `--env-file-if-exists` sustituye a la carga del `.env`:
+
+```bash
+node --env-file-if-exists=.env --import tsx server/index.ts   # equivalente a pnpm start
+./node_modules/.bin/vite build                                # equivalente a pnpm build (tras tsc)
+./node_modules/.bin/vitest run                                # equivalente a pnpm test
+```
+
+Para levantar un servidor de prueba **sin tocar tu base de datos**, apunta
+`DATA_DIR` a una copia (el shell pisa lo que diga el `.env`):
+
+```bash
+cp -a data .tmp/local-data
+DATA_DIR="$PWD/.tmp/local-data" node --env-file-if-exists=.env --import tsx server/index.ts
+```
 
 ### Tests end-to-end
 
