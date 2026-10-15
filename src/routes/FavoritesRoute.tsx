@@ -23,6 +23,7 @@ export function FavoritesRoute() {
       <ItemBrowser
         baseQuery={baseQuery}
         showFilters={false}
+        scopeLabel="favoritos"
         emptyTitle="Todavía no tienes favoritos"
         emptyDescription="Pulsa el corazón de cualquier archivo para guardarlo aquí."
         emptyAction={

@@ -1,14 +1,14 @@
 import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useLibrary } from '../data/LibraryProvider.js';
 import { usePlayer } from '../data/PlayerProvider.js';
 import { usePreferences } from '../data/Preferences.js';
 import { useItemList } from '../data/useItemList.js';
 import { api } from '../lib/api.js';
-import { useDebounced, useLocalStorage, useOnScreen } from '../lib/hooks.js';
+import { useLocalStorage, useOnScreen } from '../lib/hooks.js';
 import { IconArrowDown, IconArrowUp, IconInbox, IconPlay } from '../lib/icons.js';
 import type { Item, ItemFilter, ItemQuery, ItemSort, SortDirection } from '../lib/types.js';
 import { MediaCard } from './MediaCard.js';
-import { SearchField } from './SearchField.js';
 import { SegmentedControl } from './SegmentedControl.js';
 import { EmptyState, ErrorState, SkeletonGrid } from './States.js';
 
@@ -38,65 +38,79 @@ type ItemBrowserProps = {
   emptyTitle: string;
   emptyDescription?: string;
   emptyAction?: ReactNode;
-  showSearch?: boolean;
   showFilters?: boolean;
-  /** Acciones extra en la barra de herramientas (ordenar, tamaño…). */
+  /** Nombre del ámbito («este canal», «favoritos») cuando la búsqueda filtra dentro de una lista. */
+  scopeLabel?: string;
+  /** Acciones extra en la barra de herramientas. */
   extraTools?: ReactNode;
 };
 
 /**
  * Rejilla de archivos con barra de herramientas, filtros y carga progresiva.
- * Es la única implementación: antes había tres copias de la misma lógica de
- * paginación (últimos, favoritos y canal) que ya habían divergido.
+ *
+ * No tiene buscador propio: el término y el filtro viven en la URL y los pone el
+ * único buscador de la aplicación (`AppBar`). Así la vista se puede enlazar, el
+ * botón atrás funciona y no hay dos campos de búsqueda en la misma pantalla.
  */
 export function ItemBrowser({
   baseQuery,
   emptyTitle,
   emptyDescription,
   emptyAction,
-  showSearch = true,
   showFilters = true,
+  scopeLabel,
   extraTools,
 }: ItemBrowserProps) {
   const { resolve, setFavorite, revision } = useLibrary();
   const { play } = usePlayer();
   const { cardSize, setCardSize } = usePreferences();
+  const [params, setParams] = useSearchParams();
   const [sort, setSort] = useLocalStorage<ItemSort>('ms.sort', 'name');
   const [dir, setDir] = useLocalStorage<SortDirection>('ms.dir', 'asc');
-  const [filter, setFilter] = useState<ItemFilter>('all');
-  const [term, setTerm] = useState('');
-  const debouncedTerm = useDebounced(term, 200);
+  const [starting, setStarting] = useState(false);
 
-  // La consulta del llamante manda: la búsqueda y el filtro locales sólo la
-  // sobrescriben si esta vista los ofrece. Antes se pisaban siempre con
-  // `undefined`, así que /buscar ignoraba el término y /favoritos mostraba todo.
-  const query = useMemo<ItemQuery>(() => {
-    const localTerm = showSearch ? debouncedTerm.trim() : '';
-    return {
+  const urlQuery = params.get('q') ?? '';
+  const filter = (params.get('filtro') as ItemFilter | null) ?? 'all';
+  // La consulta del llamante manda; el término de la URL sólo la completa.
+  const term = baseQuery.q ?? urlQuery;
+
+  const changeFilter = useCallback(
+    (value: ItemFilter) => {
+      const next = new URLSearchParams(params);
+      if (value === 'all') next.delete('filtro');
+      else next.set('filtro', value);
+      // `replace`: recorrer filtros no debe llenar el historial de atrás.
+      setParams(next, { replace: true });
+    },
+    [params, setParams],
+  );
+
+  const query = useMemo<ItemQuery>(
+    () => ({
       ...baseQuery,
-      q: localTerm || baseQuery.q,
+      q: term || undefined,
       filter: showFilters ? filter : baseQuery.filter,
       sort,
       dir,
-    };
-  }, [baseQuery, debouncedTerm, filter, showFilters, showSearch, sort, dir]);
+    }),
+    [baseQuery, term, filter, showFilters, sort, dir],
+  );
 
   const list = useItemList(query, revision);
   const sentinelRef = useOnScreen<HTMLDivElement>(() => list.loadMore(), list.hasMore);
-  const [starting, setStarting] = useState(false);
 
-  /** Reproduce el canal completo (hasta 500 elementos) empezando por este. */
+  /** Reproduce la lista completa (hasta 500 elementos) empezando por este. */
   const playAll = useCallback(
     async (from: Item) => {
       setStarting(true);
       try {
-        const page = await api.items({ ...baseQuery, q: debouncedTerm.trim() || undefined, filter, sort, dir, limit: 500 });
+        const page = await api.items({ ...baseQuery, q: term || undefined, filter, sort, dir, limit: 500 });
         play(from, page.items.length > 0 ? page.items : [from]);
       } finally {
         setStarting(false);
       }
     },
-    [baseQuery, debouncedTerm, filter, sort, dir, play],
+    [baseQuery, term, filter, sort, dir, play],
   );
 
   const { reload } = list;
@@ -116,8 +130,6 @@ export function ItemBrowser({
   return (
     <div className="section">
       <div className="toolbar">
-        {showSearch && <SearchField value={term} onChange={setTerm} />}
-        <div className="appbar-spacer" />
         <label className="sr-only" htmlFor="ms-sort">
           Ordenar por
         </label>
@@ -154,7 +166,7 @@ export function ItemBrowser({
               type="button"
               className="chip"
               aria-pressed={filter === option.value}
-              onClick={() => setFilter(option.value)}
+              onClick={() => changeFilter(option.value)}
             >
               {option.label}
             </button>
@@ -167,6 +179,12 @@ export function ItemBrowser({
         {list.total} {list.total === 1 ? 'archivo' : 'archivos'}
         {showFilters && filter !== 'all' ? ' con este filtro' : ''}
       </p>
+
+      {scopeLabel && term && (
+        <p className="sub">
+          Filtrando por «{term}» en {scopeLabel}. <Link to={`/buscar?q=${encodeURIComponent(term)}`}>Buscar en toda la biblioteca</Link>
+        </p>
+      )}
 
       {list.error && <ErrorState message={list.error} onRetry={list.reload} />}
 

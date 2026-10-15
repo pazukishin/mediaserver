@@ -27,6 +27,7 @@ export function ChannelRoute({ onScan, scanning }: { onScan: () => void; scannin
 
       <ItemBrowser
         baseQuery={baseQuery}
+        scopeLabel="este canal"
         emptyTitle="No hay archivos con estos filtros"
         emptyDescription="Prueba con otro filtro o vuelve a escanear la biblioteca."
         emptyAction={

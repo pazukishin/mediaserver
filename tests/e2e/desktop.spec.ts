@@ -31,6 +31,23 @@ test.describe('escritorio', () => {
     await expect(page.getByRole('heading', { name: 'Naturaleza Salvaje' })).toBeVisible();
   });
 
+  test('en escritorio el buscador siempre está visible y cambia de ámbito', async ({ page }) => {
+    // Sin lupa que desplegar: el campo está en la barra y su marcador dice
+    // dónde busca.
+    await expect(page.getByRole('searchbox')).toHaveCount(1);
+    await expect(page.getByRole('searchbox')).toHaveAttribute('placeholder', /Buscar en la biblioteca/);
+
+    await page.goto('/c/Videos/Openings');
+    await expect(page.getByRole('searchbox')).toHaveCount(1);
+    await expect(page.getByRole('searchbox')).toHaveAttribute('placeholder', /Openings/);
+
+    await page.getByRole('searchbox').fill('Apertura 02');
+    await page.getByRole('searchbox').press('Enter');
+    await expect(page).toHaveURL(/q=Apertura/);
+    await expect(page.getByRole('heading', { name: 'Apertura 02' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Apertura 01' })).toHaveCount(0);
+  });
+
   test('las categorías aparecen en la barra lateral', async ({ page }) => {
     const sidebar = page.locator('.sidebar');
     await expect(sidebar.getByRole('link', { name: /Videos/ })).toBeVisible();

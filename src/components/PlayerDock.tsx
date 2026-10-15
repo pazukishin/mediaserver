@@ -88,12 +88,6 @@ export function PlayerDock() {
           <>
             <div className="dock-bar">
               <div className="player-bar-top">
-                {/* Cerrar vive en la barra, no flotando sobre el vídeo: los
-                    controles de la librería van en z-index 50 y tapaban el
-                    botón, así que el clic dependía de si estaban visibles. */}
-                <button type="button" className="icon-btn player-close" onClick={closeFullPlayer} aria-label="Cerrar el reproductor">
-                  <IconClose />
-                </button>
                 <div className="player-titles">
                   <h1 className="clamp-2">{current.title}</h1>
                   <p className="sub clamp-1">
@@ -130,6 +124,13 @@ export function PlayerDock() {
                       <IconList />
                     </button>
                   )}
+                  {/* Cerrar, al final y a la derecha. Vive en la barra y no
+                      flotando sobre el vídeo: los controles de la librería van
+                      en z-index 50 y tapaban el botón, así que el clic dependía
+                      de si estaban visibles. */}
+                  <button type="button" className="icon-btn player-close" onClick={closeFullPlayer} aria-label="Cerrar el reproductor">
+                    <IconClose />
+                  </button>
                 </div>
               </div>
               <label className="switch" style={{ minHeight: 0 }}>

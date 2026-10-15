@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, useLocation, useMatch, useNavigate, useSearchParams } from 'react-router-dom';
 import { formatDuration } from '../lib/format.js';
-import { IconGrid, IconHeart, IconHome, IconRefresh, IconSearch, IconSettings } from '../lib/icons.js';
+import { IconChevronLeft, IconGrid, IconHeart, IconHome, IconRefresh, IconSearch, IconSettings } from '../lib/icons.js';
 import type { CategorySummary } from '../lib/types.js';
 import { SearchField } from './SearchField.js';
 
@@ -15,36 +15,106 @@ const mainLinks = [
   { to: '/ajustes', label: 'Ajustes', Icon: IconSettings, end: false },
 ] as const;
 
+/**
+ * Única entrada de búsqueda de la aplicación.
+ *
+ * Antes había tres controles que competían: el campo de la barra superior, el
+ * icono de la lupa (que llevaba a la misma búsqueda) y otro campo dentro de cada
+ * lista. Ahora hay un solo campo y su alcance lo dice el marcador de posición:
+ * dentro de un canal filtra ese canal, en favoritos filtra los favoritos y en
+ * el resto busca en toda la biblioteca. En la ruta /buscar el campo ocupa la
+ * barra entera y se enfoca solo, así que allí no hay un segundo buscador.
+ */
 export function AppBar({ onScan, scanning }: { onScan: () => void; scanning: boolean }) {
-  const [term, setTerm] = useState('');
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [params] = useSearchParams();
+  const channelMatch = useMatch('/c/:category/:channel');
+
+  const scope = channelMatch
+    ? { path: pathname, label: `Buscar en «${decodeURIComponent(channelMatch.params.channel ?? '')}»…` }
+    : pathname === '/favoritos'
+      ? { path: pathname, label: 'Buscar en favoritos…' }
+      : null;
+  const onSearchPage = pathname === '/buscar';
+  const urlQuery = params.get('q') ?? '';
+  const mirrorsUrl = onSearchPage || scope !== null;
+
+  const [term, setTerm] = useState(mirrorsUrl ? urlQuery : '');
+  // En pantallas estrechas el campo se despliega al pulsar la lupa: se busca
+  // donde estás, sin saltar a otra pantalla.
+  const [expanded, setExpanded] = useState(false);
+  const fieldVisible = onSearchPage || expanded;
+
+  // Al entrar en una vista con búsqueda propia, el campo refleja lo que ya
+  // estaba filtrado. Mientras se escribe no se toca, porque la URL no cambia.
+  useEffect(() => {
+    if (mirrorsUrl) setTerm(urlQuery);
+  }, [mirrorsUrl, urlQuery]);
+
+  const submit = () => {
+    const value = term.trim();
+    if (scope) {
+      const next = new URLSearchParams(params);
+      if (value) next.set('q', value);
+      else next.delete('q');
+      const query = next.toString();
+      navigate(query ? `${scope.path}?${query}` : scope.path);
+      return;
+    }
+    if (value) navigate(`/buscar?q=${encodeURIComponent(value)}`);
+  };
+
+  const closeField = () => {
+    setExpanded(false);
+    setTerm(mirrorsUrl ? urlQuery : '');
+  };
 
   return (
-    <header className="appbar">
-      <Link to="/" className="appbar-brand">
-        <span className="mark" aria-hidden="true">
-          M
-        </span>
-        <span className="clamp-1">{APP_NAME}</span>
-      </Link>
+    <header className="appbar" data-search={fieldVisible ? 'on' : undefined}>
+      {!fieldVisible && (
+        <Link to="/" className="appbar-brand">
+          <span className="mark" aria-hidden="true">
+            M
+          </span>
+          <span className="clamp-1">{APP_NAME}</span>
+        </Link>
+      )}
 
-      <div className="appbar-inline-search">
+      <div
+        className="appbar-inline-search"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && !onSearchPage) closeField();
+        }}
+      >
         <SearchField
           value={term}
           onChange={setTerm}
-          onSubmit={() => {
-            const query = term.trim();
-            if (query) navigate(`/buscar?q=${encodeURIComponent(query)}`);
-          }}
+          onSubmit={submit}
+          autoFocus={onSearchPage || expanded}
+          label={scope ? scope.label.replace('…', '') : 'Buscar en la biblioteca'}
+          placeholder={scope ? scope.label : 'Buscar en la biblioteca…'}
         />
       </div>
 
       <div className="appbar-spacer" />
 
       <div className="appbar-actions">
-        <Link to="/buscar" className="icon-btn appbar-only-mobile" aria-label="Buscar">
-          <IconSearch />
-        </Link>
+        {/* La lupa es la misma búsqueda cuando el campo no cabe (pantallas
+            estrechas); nunca se ven las dos cosas a la vez. */}
+        {!onSearchPage && (
+          <button
+            type="button"
+            className="icon-btn appbar-only-mobile"
+            aria-label={expanded ? 'Salir de la búsqueda' : 'Buscar'}
+            aria-expanded={expanded}
+            onClick={() => (expanded ? closeField() : setExpanded(true))}
+          >
+            {/* Salir se dibuja como «volver», no como otra equis: dentro del
+                campo ya hay una para limpiar el texto. */}
+            {expanded ? <IconChevronLeft /> : <IconSearch />}
+          </button>
+        )}
         <button
           type="button"
           className="icon-btn"
