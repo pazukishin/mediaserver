@@ -17,11 +17,14 @@ type MediaCardProps = {
   paused?: boolean;
 };
 
-function metaLine(item: Item): { text: string; remaining: string } {
+/**
+ * Línea de metadatos, en dos piezas separadas para que el tiempo sobreviva a un
+ * nombre de canal largo: el canal se recorta, la duración nunca.
+ */
+function metaLine(item: Item): { channel: string; time: string } {
   const inProgress = item.progress > 0.01 && item.progress < 0.95 && !item.watched;
-  if (inProgress) return { text: item.channel, remaining: formatRemaining(item.position, item.duration) };
-  const duration = formatClock(item.duration);
-  return { text: duration ? `${item.channel} · ${duration}` : item.channel, remaining: '' };
+  if (inProgress) return { channel: item.channel, time: formatRemaining(item.position, item.duration) };
+  return { channel: item.channel, time: formatClock(item.duration) };
 }
 
 /**
@@ -29,7 +32,7 @@ function metaLine(item: Item): { text: string; remaining: string } {
  * tarjeta sea pulsable y navegable con teclado sin anidar interactivos.
  */
 export function MediaCard({ item, to, eager = false, onFavorite, playing = false, paused = false }: MediaCardProps) {
-  const { text, remaining } = metaLine(item);
+  const { channel, time } = metaLine(item);
   const progress = item.watched ? 0 : item.progress;
 
   return (
@@ -60,8 +63,8 @@ export function MediaCard({ item, to, eager = false, onFavorite, playing = false
           </Link>
         </h3>
         <p className="card-meta">
-          <span className="clamp-1">{text}</span>
-          {remaining && <span className="clamp-1">{remaining}</span>}
+          <span className="clamp-1">{channel}</span>
+          {time && <span className="card-time">{time}</span>}
           {item.watched && (
             <span className="card-seen">
               <IconCheck />

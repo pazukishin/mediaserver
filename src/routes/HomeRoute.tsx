@@ -51,7 +51,7 @@ export function HomeRoute({ onScan, scanning }: { onScan: () => void; scanning: 
           <p className="eyebrow">Tu biblioteca</p>
           <h1>Inicio</h1>
           <p className="sub">
-            {plural(data.stats.items, 'archivo')} · {data.stats.watched} vistos
+            {plural(data.stats.items, 'archivo')} · {plural(data.stats.watched, 'visto')}
             {data.stats.duration > 0 ? ` · ${formatDuration(data.stats.duration)} en total` : ''}
           </p>
         </div>

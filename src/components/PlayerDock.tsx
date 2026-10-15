@@ -1,10 +1,9 @@
 import { MediaPlayer, MediaProvider } from '@vidstack/react';
-import { DefaultAudioLayout, DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/layouts/default';
+import { DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/layouts/default';
 import { useState } from 'react';
 import { useLocation, useMatch, useNavigate } from 'react-router-dom';
 import '@vidstack/react/player/styles/default/theme.css';
 import '@vidstack/react/player/styles/default/layouts/video.css';
-import '@vidstack/react/player/styles/default/layouts/audio.css';
 import { useLibrary } from '../data/LibraryProvider.js';
 import { usePlayer } from '../data/PlayerProvider.js';
 import { usePreferences } from '../data/Preferences.js';
@@ -75,11 +74,7 @@ export function PlayerDock() {
               streamType="on-demand"
             >
               <MediaProvider />
-              {current.kind === 'video' ? (
-                <DefaultVideoLayout icons={defaultLayoutIcons} />
-              ) : (
-                <DefaultAudioLayout icons={defaultLayoutIcons} />
-              )}
+              {current.kind === 'video' ? <DefaultVideoLayout icons={defaultLayoutIcons} /> : <AudioControls />}
             </MediaPlayer>
           ) : (
             <div className="state" style={{ border: 0, maxWidth: 420 }}>
@@ -101,7 +96,7 @@ export function PlayerDock() {
               <div className="player-bar-top">
                 <div className="player-titles">
                   <h1 className="clamp-2">{current.title}</h1>
-                  <p className="sub">
+                  <p className="sub clamp-1">
                     {current.channel}
                     {duration > 0 ? ` · ${formatClock(position) || '0:00'} / ${formatClock(duration)}` : ''}
                   </p>
@@ -231,6 +226,52 @@ export function PlayerDock() {
         </div>
       </Sheet>
     </>
+  );
+}
+
+/**
+ * Controles propios para audio. La barra que trae la librería de vídeo está
+ * pensada para contenedores anchos y en un móvil se apelotona (título cortado,
+ * etiquetas sueltas). Aquí el título ya se ve debajo, así que la barra se queda
+ * con lo útil: retroceder, reproducir, avanzar, posición y duración.
+ */
+function AudioControls() {
+  const { playing, position, duration, toggle, seekTo } = usePlayer();
+  const max = duration > 0 ? duration : 1;
+
+  return (
+    <div className="audio-controls">
+      <button type="button" className="icon-btn" onClick={() => seekTo(Math.max(0, position - 10))} aria-label="Retroceder 10 segundos">
+        <IconSkipPrev />
+      </button>
+      <button type="button" className="audio-play" onClick={toggle} aria-label={playing ? 'Pausar' : 'Reproducir'}>
+        {playing ? <IconPause /> : <IconPlay />}
+      </button>
+      <button
+        type="button"
+        className="icon-btn"
+        onClick={() => seekTo(Math.min(duration, position + 10))}
+        aria-label="Avanzar 10 segundos"
+        disabled={duration === 0}
+      >
+        <IconSkipNext />
+      </button>
+
+      <span className="audio-time">{formatClock(position) || '0:00'}</span>
+      <input
+        className="audio-seek"
+        type="range"
+        min={0}
+        max={max}
+        step={1}
+        value={Math.min(position, max)}
+        aria-label="Posición de reproducción"
+        aria-valuetext={`${formatClock(position) || '0:00'} de ${formatClock(duration) || '0:00'}`}
+        disabled={duration === 0}
+        onChange={(event) => seekTo(Number(event.target.value))}
+      />
+      <span className="audio-time">{formatClock(duration) || '0:00'}</span>
+    </div>
   );
 }
 

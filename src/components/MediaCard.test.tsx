@@ -40,10 +40,13 @@ function renderCard(props: Partial<Parameters<typeof MediaCard>[0]> = {}) {
 }
 
 describe('MediaCard', () => {
-  test('expone el título y el canal como texto legible', () => {
+  test('expone el título, el canal y la duración como texto legible', () => {
     renderCard();
     expect(screen.getByRole('heading', { name: 'Apertura de prueba' })).toBeInTheDocument();
-    expect(screen.getByText('Openings · 5:00')).toBeInTheDocument();
+    // Canal y duración van en elementos separados: con nombres de canal largos,
+    // el tiempo tiene que poder leerse siempre.
+    expect(screen.getByText('Openings')).toBeInTheDocument();
+    expect(screen.getByText('5:00')).toBeInTheDocument();
   });
 
   test('toda la tarjeta es un enlace navegable con el título como nombre accesible', () => {
