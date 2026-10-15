@@ -9,10 +9,24 @@ services:
       - "3000:3000"
     environment:
       PORT: 3000
+      MEDIA_DIR: /media
+      DATA_DIR: /data
       MEDIA_USER: ${MEDIA_USER:-media}
-      MEDIA_PASSWORD: ${MEDIA_PASSWORD:-cambia-esta-contrasena}
-      SESSION_SECRET: ${SESSION_SECRET:-cambia-esta-clave}
+      # Sin valor por defecto a propósito: el servidor se niega a arrancar con
+      # credenciales de ejemplo. Defínelas en .env (`:?` avisa si faltan).
+      MEDIA_PASSWORD: ${MEDIA_PASSWORD:?define MEDIA_PASSWORD en .env}
+      SESSION_SECRET: ${SESSION_SECRET:?define SESSION_SECRET (>=32 caracteres) en .env}
+      # 1 cuando hay un proxy inverso delante (HTTPS + cookie secure)
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+      SCAN_CONCURRENCY: ${SCAN_CONCURRENCY:-2}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       - ./media:/media:ro
       - ./data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
     restart: unless-stopped

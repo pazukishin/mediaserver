@@ -16,4 +16,7 @@ COPY --from=build /app/server ./server
 ENV NODE_ENV=production
 EXPOSE 3000
 VOLUME ["/media", "/data"]
+# `/api/health` no exige sesión: sirve como sonda real del proceso.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
 CMD ["pnpm", "start"]
