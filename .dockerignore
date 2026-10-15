@@ -1,4 +1,39 @@
+# Contexto de build mínimo. Sin esto, `COPY . .` mete en la imagen y en el
+# contexto de envío la biblioteca de medios, la base de datos, los .tar de
+# imágenes exportadas y las cachés locales (cientos de MB por build).
 node_modules
 dist
-.data
+
+# Datos y biblioteca: se montan como volúmenes, nunca se hornean
+media
+data
+
+# Cachés y utillaje local
+.dev
+.tmp
+coverage
+playwright-report
+test-results
+
+# Artefactos y ficheros pesados del repositorio
+*.tar
+*.log
+
+# Control de versiones y configuración local
 .git
+.gitignore
+.gitattributes
+.env
+.env.*
+!.env.example
+
+# Metadatos del editor
+.vscode
+
+# Documentación y ejemplos: no hacen falta dentro de la imagen
+docs
+DESIGN.md
+PLAN.md
+README.md
+docker-compose.yml
+Dockerfile

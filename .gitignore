@@ -1,9 +1,27 @@
+# Dependencias y artefactos de build
 node_modules/
 dist/
+coverage/
+
+# Entorno: la plantilla sí se versiona, los ficheros reales no
 .env
 .env.*
+!.env.example
+
+# Biblioteca y datos de ejecución (solo existen en el servidor)
 media/
 data/
+
+# Utillaje local del agente/desarrollador (cachés, store, navegadores de test)
+.dev/
+.tmp/
+
+# Resultados de tests end-to-end
+playwright-report/
+test-results/
+blob-report/
+
+# Sistema y logs
 *.log
 *.tar
 .DS_Store

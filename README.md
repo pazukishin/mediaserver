@@ -1,297 +1,252 @@
 # MediaServer
 
-![Version](https://img.shields.io/badge/version-1.2.2-7dce9b)
-![License](https://img.shields.io/badge/license-MIT-7dce9b)
-![Runtime](https://img.shields.io/badge/Node.js-24-7dce9b)
+![Version](https://img.shields.io/badge/version-2.0.0-9d6bff)
+![License](https://img.shields.io/badge/license-MIT-9d6bff)
+![Runtime](https://img.shields.io/badge/Node.js-22%2B-9d6bff)
 
-MediaServer es un servidor multimedia privado para gestionar, navegar, reproducir y marcar archivos de vídeo y audio desde una biblioteca local estructurada por categorías y canales. Está pensado para uso doméstico o de laboratorio, con una interfaz web moderna para explorar contenido, seguir el progreso de reproducción y trabajar de forma cómoda en escritorio y móvil.
+Servidor multimedia privado para navegar y reproducir una biblioteca local de
+audio y vídeo, pensado para usarse **desde el móvil** y desplegarse en un NAS o
+un servidor casero con Docker.
 
-Este proyecto se ha desarrollado íntegramente con GitHub Copilot como prueba de las capacidades del agente en tareas reales de construcción de software: arquitectura, frontend, backend, UX responsive, Docker, correcciones de regresión, optimización de rendimiento y despliegue.
+La 2.0 es una reescritura de la interfaz y un endurecimiento del servidor. La
+dirección visual está documentada en [DESIGN.md](DESIGN.md) y el contrato de la
+API en [docs/API.md](docs/API.md).
 
-> Proyecto personal y experimental. Revisa la configuración de seguridad antes de exponerlo a Internet.
+## Qué cambia respecto a la 1.2.2
 
-## Características principales
+**Interfaz**
 
-- Exploración de contenido por categorías y canales
-- Reproducción de vídeo y audio
-- Marcado de archivos como vistos y favoritos
-- Búsqueda y filtros por estado de reproducción
-- Ordenación por nombre o fecha de creación
-- Galería con paginación y compactación automática
-- Miniaturas y previews de vídeo generadas con FFmpeg
-- Reproductor con UI adaptada a móvil y escritorio
-- Soporte para archivos `.opus` y audio/video comunes
-- Autenticación simple por usuario y contraseña
-- Persistencia de datos y progreso en SQLite
-- Despliegue simplificado con Docker
-- Logs a consola para integración con Portainer
+- Dirección visual nueva, *media-first*: la carátula es el interfaz y el chrome
+  desaparece. Tema oscuro por defecto y **tema claro** opcional.
+- **Responsive de verdad**: la disposición la decide CSS, no el `userAgent`. En
+  móvil hay navegación inferior; en escritorio, barra lateral. Funciona igual en
+  iPad, en una ventana estrecha o con «sitio de escritorio» activado.
+- **Navegación con historial**: el gesto de volver de Android cierra el
+  reproductor o vuelve del canal en lugar de salir de la aplicación, y cualquier
+  vista se puede enlazar y compartir.
+- **PWA instalable**: se añade a la pantalla de inicio, arranca sin barra de
+  navegación y guarda la cáscara para abrir aunque el servidor tarde.
+- **Mini reproductor persistente**: cerrar el reproductor ya no corta la
+  reproducción; se sigue escuchando mientras navegas por la biblioteca.
+- **Controles del sistema** (MediaSession): pantalla de bloqueo, auriculares y
+  botones multimedia del sistema.
+- **Seguir viendo** con barra de progreso, duración real y tiempo restante.
+- **Cola de reproducción**: «Reproducir todo» en un canal, con siguiente y
+  anterior, y cola lateral en escritorio.
+- Carga progresiva al hacer scroll en lugar de paginación por flechas.
+- Estados de carga, vacío y error con acción, en vez de pantallas en blanco.
+- Acciones optimistas con aviso y opción de deshacer (favoritos, visto).
+- Las preferencias (tema, tamaño de tarjetas, orden, autoplay) **se conservan**
+  entre recargas.
+- Accesibilidad: navegación por teclado, foco visible y atrapado en diálogos,
+  nombres accesibles, objetivos táctiles de 44 px y respeto a
+  `prefers-reduced-motion`.
+- Tipografía auto-hospedada (nada de Google Fonts) y contraste pensado para
+  lecturas largas.
+
+**Servidor**
+
+- **Duración real** de cada archivo (medida con `ffprobe`), antes siempre 0.
+- **Carátulas de audio** de verdad: imagen embebida y, si no la hay, la portada
+  de la carpeta. Antes no se generaba ninguna.
+- **Escaneo incremental y cancelable**: sólo procesa lo nuevo o lo modificado.
+- Los fotogramas de vista previa se generan **bajo demanda**, no durante el
+  escaneo.
+- Una sola tabla de estado (antes tres, sincronizadas a mano con SQL duplicado),
+  con **migración automática** y copia de seguridad previa de la base de datos.
+- Búsqueda, filtros, orden y paginación **en el servidor**.
+- Endurecimiento: `/media/*` y las carátulas ya no son accesibles sin sesión,
+  login con límite de intentos y comparación en tiempo constante, cabeceras de
+  seguridad, validación con Zod de todos los parámetros, `/api/health` para el
+  `HEALTHCHECK` y apagado ordenado.
+- Las variables `MEDIA_PASSWORD` y `SESSION_SECRET` son obligatorias y **no
+  tienen valor por defecto**.
+- `.env` se carga de verdad (`--env-file-if-exists`), cosa que antes no ocurría.
+- Tests unitarios y end-to-end reales (antes `pnpm test` estaba roto).
 
 ## Estructura de la biblioteca
 
-La estructura recomendada es:
-
 ```text
 media/
-  Anime/
-    Accion/
-      episodio-01.mp4
-      episodio-02.mp4
-  Documentales/
-    Naturaleza/
-      video.mp4
-  Musica/
-    Album/
-      track-01.mp3
-  Sin Categoría/
-    archivo.mp4
+  Videos/
+    Openings/
+      apertura-01.mp4
+      cover.jpg          ← portada del canal (opcional)
+  Audio/
+    Canciones/
+      cancion-01.mp3
+      cover.jpg          ← portada de la carpeta (opcional)
 ```
 
-Las rutas se interpretan así:
+- `media/<categoría>/<canal>/<archivo>` es la estructura normal.
+- Un archivo directamente en `media/` se cataloga como `Sin Categoría / Sin Canal`.
+- Un archivo dentro de una categoría pero no de un canal va a `<categoría> / Sin Canal`.
+- Las subcarpetas de un canal se recorren de forma recursiva.
+- La biblioteca es de **sólo lectura** para la aplicación.
 
-- `media/<categoria>/<canal>/<archivo>`
-- Si un archivo está directamente dentro de `media`, se trata como `Sin Categoría` / `Sin Canal`
-- Si un archivo está dentro de una categoría pero no de un canal, se agrupa como `<categoria>/Sin Canal`
+Para las carátulas de audio se busca, por orden: imagen embebida en el archivo,
+`cover|folder|front|album|poster.<ext>` en su carpeta, una imagen hermana con el
+mismo nombre base, y la portada del canal.
 
 ## Requisitos
 
-- Node.js 24+
+- Node.js 22 o superior
 - pnpm
-- FFmpeg
-- Docker / Docker Desktop (opcional, para despliegue con contenedores)
+- FFmpeg (`ffmpeg` y `ffprobe` en el `PATH`) para duración y carátulas
+- Docker / Docker Compose (opcional, para el despliegue)
 
 ## Instalación local
 
-1. Clona el repositorio.
-2. Instala dependencias:
-
 ```bash
 pnpm install
-```
-
-3. Crea y ajusta la configuración de entorno:
-
-```bash
-copy .env.example .env
-```
-
-En macOS/Linux puede usarse `cp .env.example .env`.
-
-4. Inicia la aplicación en modo desarrollo:
-
-```bash
+cp .env.example .env      # y edita las credenciales
 pnpm dev
 ```
 
-La app quedará disponible en:
+La aplicación queda en <http://localhost:3000>.
 
-```text
-http://localhost:3000
-```
+> `pnpm dev` levanta dos procesos: el servidor Fastify (puerto 3000) y Vite con
+> recambio en caliente (puerto 5173). Usa el de Vite mientras desarrollas.
 
 ## Variables de entorno
 
-El proyecto usa varias variables opcionales para configurar rutas, acceso y sesión.
+| Variable | Obligatoria | Por defecto | Para qué |
+| --- | --- | --- | --- |
+| `MEDIA_PASSWORD` | **Sí** | — | Contraseña del único usuario |
+| `SESSION_SECRET` | **Sí** | — | Firma la cookie de sesión (32+ caracteres) |
+| `MEDIA_USER` | No | `media` | Nombre de usuario |
+| `PORT` | No | `3000` | Puerto de escucha |
+| `HOST` | No | `0.0.0.0` | Interfaz de escucha |
+| `MEDIA_DIR` | No | `/media` si existe, si no `./media` | Biblioteca |
+| `DATA_DIR` | No | `/data` si existe, si no `./data` | Base de datos y carátulas |
+| `TRUST_PROXY` | No | `0` | `1` si va detrás de un proxy con HTTPS |
+| `SCAN_CONCURRENCY` | No | `2` | Archivos procesados a la vez en el escaneo |
+| `LOG_LEVEL` | No | `info` | `debug` sólo si lo necesitas |
 
-Ejemplo de `.env`:
+Genera los secretos así:
 
-```env
-PORT=3000
-MEDIA_DIR=/media
-DATA_DIR=/data
-MEDIA_USER=media
-MEDIA_PASSWORD=cambia-esta-contrasena
-SESSION_SECRET=dev-secret
+```bash
+openssl rand -base64 32   # SESSION_SECRET
 ```
 
-Puedes partir de [.env.example](.env.example). Si no se establecen, la app usa por defecto:
+`.env` se carga automáticamente al arrancar (`--env-file-if-exists`).
 
-- `media/` dentro del proyecto
-- `data/` dentro del proyecto
-- usuario: `media`
-- contraseña: `cambia-esta-contrasena`
-
-En Docker Compose, los volúmenes se montan en `/media` y `/data` dentro del contenedor. No cambies esas rutas sin actualizar también los montajes del archivo `docker-compose.yml`.
-
-## Arranque con Docker
-
-1. Crea las carpetas de contenido si no existen:
+## Despliegue con Docker
 
 ```bash
 mkdir -p media data
-```
-
-2. Ajusta `.env` si quieres configurar usuario, contraseña y rutas.
-
-3. Levanta el contenedor:
-
-```bash
+cp .env.example .env    # rellena MEDIA_PASSWORD y SESSION_SECRET
 docker compose up -d --build
 ```
 
-4. Abre la aplicación:
+El contenedor monta `./media` en `/media` (sólo lectura) y `./data` en `/data`, y
+publica el puerto 3000. Trae `HEALTHCHECK`, así que Portainer y `docker ps`
+muestran el estado real del servicio.
+
+## Uso
+
+- **Inicio**: «Seguir viendo», lo añadido recientemente y las categorías.
+- **Biblioteca**: categoría → canal → archivos. Filtros por visto, por ver y
+  favoritos, y orden por nombre, fecha, duración o última reproducción.
+- **Buscar**: búsqueda global que ignora mayúsculas y acentos. La consulta queda
+  en la URL, así que se puede compartir.
+- **Reproductor**: se abre a pantalla completa; al cerrarlo queda el mini
+  reproductor. «Reproducir todo» encola el canal entero. Si el archivo ya estaba
+  empezado, se ofrece continuar donde lo dejaste.
+- **Ajustes**: tema, tamaño de las tarjetas, autoplay, estado de la biblioteca y
+  reinicio del estado de reproducción (con confirmación).
+
+### En el móvil
+
+Abre la dirección en el navegador y usa «Añadir a la pantalla de inicio». La app
+se instala como PWA, se abre sin barra de navegación y respeta el notch y los
+gestos del sistema.
+
+## Arquitectura
 
 ```text
-http://localhost:3000
+server/                 API Fastify
+  config.ts             variables de entorno validadas
+  db/                   esquema, migraciones y copia previa
+  repositories/         consultas SQL tipadas
+  routes/               endpoints agrupados por área
+  services/             escaneo, ffprobe, carátulas, ejecución de ffmpeg
+src/                    interfaz React
+  App.tsx               composición de proveedores y rutas
+  components/           piezas reutilizables (tarjetas, hojas, reproductor…)
+  data/                 consultas, estado compartido y preferencias
+  lib/                  cliente de la API, formato, hooks, iconos
+  routes/               una vista por ruta
+  styles/               tokens, base y estilos de la aplicación
+tests/                  unitarios (Vitest) y end-to-end (Playwright)
+public/                 manifiesto PWA, service worker, iconos
+docs/                   contrato de la API y capturas
 ```
 
-Para actualizar una instalación existente:
+Decisiones que conviene conocer antes de tocar el código:
 
-```bash
-docker compose pull
-docker compose up -d --build
-```
-
-Para consultar el estado y los logs:
-
-```bash
-docker compose ps
-docker compose logs -f mediaserver
-```
-
-## Acceso y autenticación
-
-La app usa una autenticación básica por sesión HTTP.
-
-Credenciales por defecto:
-
-- Usuario: `media`
-- Contraseña: `cambia-esta-contrasena`
-
-Es recomendable cambiarla en producción.
-
-La sesión depende de `SESSION_SECRET`; utiliza una clave larga y aleatoria y no publiques el archivo `.env`.
-
-## Escaneo y generación de contenido
-
-El botón `Escanear` analiza la biblioteca y genera:
-
-- metadatos de cada archivo
-- miniaturas de portada
-- previews animados para vídeos
-- entradas en la base de datos SQLite
-- actualización del catálogo sin perder el estado de vistos y favoritos
-
-La lógica de escaneo está protegida para que no bloquee la aplicación durante tiempos prolongados, evitando que el servidor quede colgado por un archivo problemático o por tareas pesadas de FFmpeg.
-
-El progreso de reproducción y el estado de cada elemento son conceptos separados:
-
-- **Progreso de reproducción**: guarda la posición aproximada en la que se dejó un audio o vídeo para poder continuar desde ahí.
-- **Visto/No visto**: es el estado manual o automático que indica si el contenido se ha completado. Un elemento marcado como `Visto` siempre empieza desde el principio y nunca restaura una posición anterior.
-- **Favoritos**: es una marca independiente para encontrar rápidamente contenido guardado.
+- La **versión vive sólo en `package.json`**; Vite la inyecta en el bundle y el
+  servidor la lee de ahí.
+- El reproductor es **una única instancia** montada en la raíz. No se desmonta al
+  navegar: por eso la reproducción no se corta. Los cambios de presentación se
+  hacen por CSS con `data-mode`.
+- La disposición **no depende del user-agent** en ningún sitio.
+- Las imágenes se sirven siempre por `/api/...` y exigen sesión.
+- Los fotogramas de vista previa se generan la primera vez que se piden.
 
 ## Persistencia
 
-Los datos persistentes viven en la carpeta `data`:
+Todo lo persistente vive en `DATA_DIR`:
 
 ```text
 data/
-  mediaserver.db
-  covers/
+  mediaserver.db        base SQLite (WAL)
+  mediaserver.db.bak-*  copia previa a una migración
+  covers/               carátulas y vistas previas generadas
 ```
 
-Esta carpeta contiene:
+Al migrar una base de una versión anterior se guarda una copia con marca de
+tiempo antes de tocar nada. Aun así, **haz copias de seguridad de `data/`**.
 
-- la base de datos SQLite
-- miniaturas y previews generados por FFmpeg
-- cachés y archivos auxiliares de la app
-
-La librería multimedia es de solo lectura para la app en tiempo de ejecución.
-
-Haz copias de seguridad de `data/` para conservar la base de datos y las imágenes generadas. La carpeta `media/` contiene el contenido original y se monta como solo lectura en Docker.
-
-## Rendimiento y UX
-
-La interfaz ha sido optimizada para:
-
-- escritorio con pantallas verticales
-- móvil real con experiencia compacta
-- uso táctil en teléfonos
-- evitar bloqueos de la UI tras escaneos largos
-- ocultar paneles y listas redundantes cuando el navegador real es móvil
-
-## Versionado
-
-El proyecto sigue versionado semántico `MAJOR.MINOR.PATCH`:
-
-- `PATCH`: correcciones, ajustes pequeños y mejoras internas
-- `MINOR`: nuevas funcionalidades manteniendo compatibilidad
-- `MAJOR`: cambios de ruptura o cambios arquitectónicos importantes
-
-La versión actual está marcada en:
-
-- `package.json`
-- `server/index.ts`
-- `src/main.tsx`
-
-## Docker export para Portainer
-
-El proyecto puede exportarse como imagen de Docker para importarla en Portainer:
+## Desarrollo
 
 ```bash
-docker build -t pazus-mediaserver:latest .
-docker save -o pazus-mediaserver.tar pazus-mediaserver:latest
+pnpm dev          # servidor + Vite con recambio en caliente
+pnpm build        # comprobación de tipos + build de producción
+pnpm start        # servidor sobre dist/ ya construido
+pnpm typecheck    # sólo tipos
+pnpm test         # tests unitarios (Vitest)
+pnpm test:e2e     # build + tests end-to-end (Playwright)
+pnpm lint         # Biome (lint + formato)
+pnpm icons        # regenera los PNG de la PWA desde los SVG
 ```
 
-El tar generado puede usarse para cargar la imagen en Portainer o en cualquier entorno compatible con `docker load`.
+Antes de dar algo por terminado: `pnpm typecheck && pnpm test && pnpm lint && pnpm build`.
 
-## Scripts disponibles
+### Tests end-to-end
+
+Generan su propia biblioteca diminuta en `.tmp/e2e/` (nunca tocan tu `media/` ni
+tu `data/`) y arrancan el servidor en el puerto 3210 con credenciales de prueba.
+La primera vez hay que descargar el navegador:
 
 ```bash
-pnpm install
-pnpm dev
-pnpm build
-pnpm start
-pnpm test
+pnpm exec playwright install chromium
 ```
 
-Antes de abrir una pull request, ejecuta `pnpm build` y `pnpm test`.
+Las capturas de la interfaz para revisar cambios visuales se regeneran solas en
+[docs/capturas](docs/capturas) al ejecutar `pnpm test:e2e`.
 
-## Stack principal
+## Seguridad
 
-- React
-- Vite
-- Fastify
-- SQLite
-- Vidstack
-- FFmpeg
-- Docker
-- TypeScript
-
-## Desarrollo y contribuciones
-
-Las contribuciones son bienvenidas. Para proponer un cambio:
-
-1. Crea una rama a partir de `main`.
-2. Mantén los cambios centrados y actualiza la documentación cuando corresponda.
-3. Ejecuta `pnpm build` y `pnpm test`.
-4. Abre una pull request describiendo el cambio y su validación.
-
-## Roadmap / notas de desarrollo
-
-Entre mejoras implementadas están:
-
-- soporte para vídeos y audio en múltiples formatos
-- favoritos y marcado de visto
-- filtros, búsqueda y paginación de galería
-- mejoras móviles reales basadas en el navegador y no en la orientación de la pantalla
-- manejo más seguro de tareas pesadas con FFmpeg
-- logs útiles para despliegue y observabilidad
-
-## Nota sobre el desarrollo con Copilot
-
-Este proyecto fue construido, depurado y refinado en gran parte con GitHub Copilot como demostración de la capacidad del agente para:
-
-- generar estructura del proyecto
-- definir arquitectura
-- implementar APIs en Fastify
-- construir la interfaz React/Vite
-- corregir problemas de UX responsive
-- depurar cuelgues, regressions y render issues
-- preparar configuración de despliegue y Docker
-- mantener el proyecto ejecutable y consistente
-
-La intención de este repositorio es servir como ejemplo de trabajo real con asistentes de codificación en un flujo de desarrollo práctico y completo.
+- Toda la API salvo `/api/health` y el acceso exige sesión.
+- Los archivos de la biblioteca se sirven por `GET /api/stream/:id`, autenticado
+  y con soporte de `Range`.
+- El login limita los intentos fallidos y compara la contraseña en tiempo
+  constante.
+- Hay cabeceras de seguridad (CSP, `nosniff`, `Referrer-Policy`, etc.).
+- **No se sirve HTTPS**: si lo expones fuera de tu red, ponlo detrás de un proxy
+  con TLS y activa `TRUST_PROXY=1`.
 
 ## Licencia
 
-Este proyecto se distribuye bajo la licencia [MIT](LICENSE). Consulta el archivo `LICENSE` para conocer los términos completos.
+MIT. Consulta [LICENSE](LICENSE).
