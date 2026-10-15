@@ -2,12 +2,36 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover: la app llega a los bordes y respeta el notch vía safe-area-inset -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0b0b0f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f6f6f9" media="(prefers-color-scheme: light)" />
+    <meta
+      name="description"
+      content="Servidor multimedia privado: navega y reproduce tu biblioteca local de audio y vídeo desde cualquier dispositivo."
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="MediaServer" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>MediaServer</title>
+
+    <!-- El tema se resuelve antes del primer pintado para que no haya destello
+         blanco. Va en un fichero propio (nada de script en línea) para que la
+         CSP del servidor pueda seguir siendo `script-src 'self'`. -->
+    <script src="/theme-boot.js"></script>
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <p style="font-family: system-ui, sans-serif; padding: 24px">
+        MediaServer necesita JavaScript para funcionar. Actívalo en tu navegador y recarga la página.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
