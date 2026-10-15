@@ -15,6 +15,33 @@ test.describe('reproductor', () => {
     await expect(page.getByRole('heading', { name: 'Apertura 01', level: 1 })).toBeVisible();
   });
 
+  // Regresión: la X flotaba sobre el vídeo en z-index 5, mientras que los
+  // controles de la librería van en z-index 50. Según si estaban visibles o no,
+  // el clic caía en la X o en los controles: cerrar era una lotería.
+  test('el botón de cerrar recibe el clic con los controles ocultos y visibles', async ({ page }) => {
+    await goToChannel(page, 'Videos', 'Openings');
+    await page.getByRole('link', { name: 'Apertura 01' }).click();
+    await expect(page.locator('.player-dock[data-mode="full"]')).toBeVisible();
+
+    const cierraRecibeElClic = () =>
+      page.getByRole('button', { name: 'Cerrar el reproductor' }).evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+        return hit !== null && (element === hit || element.contains(hit));
+      });
+
+    // Recién abierto: los controles del vídeo están ocultos.
+    expect(await cierraRecibeElClic(), 'con los controles ocultos').toBe(true);
+
+    // Y con los controles ya visibles (ratón encima unos segundos).
+    await page.mouse.move(400, 300);
+    await page.waitForTimeout(3000);
+    expect(await cierraRecibeElClic(), 'con los controles visibles').toBe(true);
+
+    await page.getByRole('button', { name: 'Cerrar el reproductor' }).click();
+    await expect(page.locator('.miniplayer')).toBeVisible();
+  });
+
   test('al cerrar, la reproducción sigue con el mini reproductor', async ({ page }) => {
     await goToChannel(page, 'Videos', 'Openings');
     await page.getByRole('link', { name: 'Apertura 01' }).click();

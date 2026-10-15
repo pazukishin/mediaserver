@@ -384,6 +384,14 @@
   color: var(--danger);
 }
 
+/* Las acciones de la zona de cuidado se leen como una lista: alineadas a la
+ * izquierda y con el alto de un botón normal, no estiradas a lo alto. */
+.danger-zone .btn {
+  justify-content: flex-start;
+  text-align: left;
+  padding-inline: var(--s-3);
+}
+
 .btn-block {
   width: 100%;
 }
@@ -451,6 +459,28 @@
 
 .field input::placeholder {
   color: var(--text-subtle);
+}
+
+/* Los iconos de botones y chips tienen tamaño fijo: sin esto, un `<svg>` con
+ * `viewBox` y sin medidas sale de 0 px o de 300 px según el contenedor. */
+.btn svg,
+.chip svg,
+.segmented button svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* El contorno del foco va en la caja del campo, no en el input de dentro: con
+ * los dos, el campo parecía tener dos marcos (o dos inputs). El borde se vuelve
+ * transparente para que se vea UN solo anillo, no dos líneas moradas. */
+.field input:focus-visible {
+  outline: none;
+}
+
+.field:focus-within {
+  border-color: transparent;
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
 }
 
 .field-search {
@@ -1494,17 +1524,19 @@
   flex: 0 0 auto;
 }
 
+/* Cerrar el reproductor: un botón más de la barra (nada flotando sobre el vídeo). */
 .player-close {
-  position: absolute;
-  top: calc(var(--s-3) + var(--safe-top));
-  left: var(--s-3);
-  z-index: 5;
+  flex: 0 0 auto;
   width: 44px;
   height: 44px;
   border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--bg) 60%, transparent);
-  backdrop-filter: blur(8px);
-  color: #fff;
+  color: var(--text-muted);
+}
+
+/* El botón de Google Cast no hace nada aquí (no hay integración) y se solapaba
+ * con los controles propios. */
+.vds-cast-button {
+  display: none;
 }
 
 .queue-list {

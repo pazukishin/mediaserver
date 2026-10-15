@@ -70,6 +70,11 @@ svg {
   max-width: 100%;
 }
 
+/* Un icono nunca se estira ni se encoge: su tamaño lo fija el componente. */
+svg {
+  flex: 0 0 auto;
+}
+
 button,
 input,
 select,

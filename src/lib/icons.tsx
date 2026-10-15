@@ -2,7 +2,13 @@ import type { SVGProps } from 'react';
 
 type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
-function Icon({ size, children, ...props }: IconProps) {
+/**
+ * Todos los iconos llevan `width`/`height` explícitos. Sin ellos, un SVG con
+ * `viewBox` no tiene tamaño intrínseco y el navegador decide: dentro de un
+ * contenedor flex sale de 0 px (invisible) o de 300 px (gigante). Por eso el
+ * valor por defecto no es opcional.
+ */
+function Icon({ size = 20, children, ...props }: IconProps) {
   return (
     <svg
       viewBox="0 0 24 24"

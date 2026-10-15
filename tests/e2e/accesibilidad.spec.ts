@@ -39,13 +39,18 @@ test.describe('accesibilidad y semántica', () => {
     // esqueleto de arranque no hay nada enfocable y el foco se queda en `body`.
     await expect(page.getByRole('heading', { name: 'Biblioteca', level: 1 })).toBeVisible();
 
+    // El contorno puede estar en el propio elemento o en la caja del campo que
+    // lo envuelve (un input dentro de `.field` no debe dibujar dos marcos).
     const focused = async () =>
       page.evaluate(() => {
         const element = document.activeElement as HTMLElement | null;
         if (!element) return null;
-        const style = getComputedStyle(element);
+        const wrapper = element.closest('.field');
+        const owner = wrapper && getComputedStyle(wrapper).outlineStyle !== 'none' ? wrapper : element;
+        const style = getComputedStyle(owner);
         return {
           etiqueta: `${element.tagName.toLowerCase()}.${element.className}`,
+          quienDibuja: owner === element ? 'el propio elemento' : 'su caja .field',
           contorno: style.outlineStyle,
           grosor: Number.parseFloat(style.outlineWidth) || 0,
         };
@@ -60,6 +65,43 @@ test.describe('accesibilidad y semántica', () => {
     const segundo = await focused();
     expect(segundo?.contorno, `segundo foco: ${segundo?.etiqueta}`).not.toBe('none');
     expect(segundo?.grosor).toBeGreaterThanOrEqual(2);
+  });
+
+  // Regresión: los `<svg>` con `viewBox` y sin `width`/`height` no tienen
+  // tamaño intrínseco. Dentro de un botón o un chip salían de 0 px (icono
+  // invisible) o de ~300 px (botón de 300 px de alto). Los tests de nombre
+  // accesible no lo ven, porque el botón sigue funcionando sin su icono.
+  test('los iconos tienen un tamaño real, ni invisibles ni desproporcionados', async ({ page }) => {
+    // La sesión ya está iniciada por el `beforeEach`.
+    for (const route of ['/', '/biblioteca', '/c/Videos/Openings', '/favoritos', '/ajustes']) {
+      await page.goto(route);
+      await page.waitForLoadState('networkidle');
+
+      const malos = await page.evaluate(() => {
+        const esVisible = (element: Element | null): boolean => {
+          let node: Element | null = element;
+          while (node) {
+            if (getComputedStyle(node).display === 'none') return false;
+            node = node.parentElement;
+          }
+          return true;
+        };
+        return Array.from(document.querySelectorAll('button svg, a svg'))
+          .filter((svg) => esVisible(svg))
+          .map((svg) => {
+            const rect = svg.getBoundingClientRect();
+            return {
+              ancho: Math.round(rect.width),
+              alto: Math.round(rect.height),
+              padre: `${svg.parentElement?.tagName.toLowerCase()}.${String(svg.parentElement?.className).slice(0, 24)}`,
+            };
+          })
+          .filter((medida) => medida.ancho === 0 || medida.alto === 0 || medida.ancho > 48 || medida.alto > 48)
+          .map((medida) => `${medida.padre}: ${medida.ancho}x${medida.alto}`);
+      });
+
+      expect(malos, `iconos mal dimensionados en ${route}`).toEqual([]);
+    }
   });
 
   test('Escape cierra la hoja de confirmación y devuelve el foco', async ({ page }) => {
