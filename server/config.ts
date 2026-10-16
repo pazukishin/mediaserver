@@ -26,6 +26,10 @@ export type AppConfig = {
   trustProxy: boolean;
   scanConcurrency: number;
   logLevel: LogLevel;
+  /** Certificado y clave para servir HTTPS (PWA instalable en Android). */
+  tlsCert: string | null;
+  tlsKey: string | null;
+  tlsPort: number;
 };
 
 export type EnvSource = Record<string, string | undefined>;
@@ -69,6 +73,9 @@ const envSchema = z.object({
   TRUST_PROXY: z.string().optional(),
   SCAN_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(2),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  TLS_CERT: z.string().min(1).optional(),
+  TLS_KEY: z.string().min(1).optional(),
+  TLS_PORT: z.coerce.number().int().min(1).max(65_535).default(3443),
 });
 
 /**
@@ -87,6 +94,15 @@ export function loadConfig(env: EnvSource = process.env): AppConfig {
   const mediaDir = resolve(values.MEDIA_DIR ?? defaultDir('/media', 'media'));
   const dataDir = resolve(values.DATA_DIR ?? defaultDir('/data', 'data'));
 
+  // HTTPS opcional: se activa sólo con las dos piezas. Una sola no sirve y es
+  // casi seguro un error de configuración: mejor avisar que arrancar en HTTP
+  // en silencio cuando el usuario esperaba HTTPS.
+  const tlsCert = values.TLS_CERT ? resolve(values.TLS_CERT) : null;
+  const tlsKey = values.TLS_KEY ? resolve(values.TLS_KEY) : null;
+  if ((tlsCert === null) !== (tlsKey === null)) {
+    throw new ConfigError('Configuración no válida.\nTLS_CERT y TLS_KEY deben definirse juntas (o ninguna de las dos).');
+  }
+
   return {
     port: values.PORT,
     host: values.HOST,
@@ -101,5 +117,8 @@ export function loadConfig(env: EnvSource = process.env): AppConfig {
     trustProxy: values.TRUST_PROXY === '1' || values.TRUST_PROXY === 'true',
     scanConcurrency: values.SCAN_CONCURRENCY,
     logLevel: values.LOG_LEVEL,
+    tlsCert,
+    tlsKey,
+    tlsPort: values.TLS_PORT,
   };
 }

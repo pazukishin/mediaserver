@@ -7,6 +7,9 @@ services:
         - pazus-mediaserver:latest
     ports:
       - "3000:3000"
+      # HTTPS opcional (para instalar la PWA en Android). Quita esta línea si no
+      # lo usas. TLS_PORT dentro del contenedor se puede ajustar con la variable.
+      - "${TLS_PORT:-3443}:${TLS_PORT:-3443}"
     environment:
       PORT: 3000
       MEDIA_DIR: /media
@@ -20,9 +23,16 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-0}
       SCAN_CONCURRENCY: ${SCAN_CONCURRENCY:-2}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # HTTPS opcional: rutas DENTRO del contenedor a los certificados montados
+      # en ./certs. Déjalas vacías para servir sólo HTTP.
+      TLS_CERT: ${TLS_CERT:-}
+      TLS_KEY: ${TLS_KEY:-}
+      TLS_PORT: ${TLS_PORT:-3443}
     volumes:
       - ./media:/media:ro
       - ./data:/data
+      # Descomenta para montar los certificados (scripts/gen-certs.sh):
+      # - ./certs:/certs:ro
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s

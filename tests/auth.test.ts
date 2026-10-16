@@ -35,6 +35,19 @@ describe('configuración obligatoria', () => {
     expect(config.logLevel).toBe('info');
     expect(config.scanConcurrency).toBe(2);
     expect(config.trustProxy).toBe(false);
+    expect(config.tlsCert).toBeNull();
+    expect(config.tlsKey).toBeNull();
+    expect(config.tlsPort).toBe(3443);
+  });
+
+  it('activa HTTPS sólo cuando TLS_CERT y TLS_KEY van juntas', () => {
+    const conTls = loadConfig({ MEDIA_PASSWORD: 'algo', SESSION_SECRET: 'x'.repeat(40), TLS_CERT: '/certs/cert.pem', TLS_KEY: '/certs/key.pem' });
+    expect(conTls.tlsCert).toContain('cert.pem');
+    expect(conTls.tlsKey).toContain('key.pem');
+
+    // Una sola pieza es un error de configuración: arrancar en HTTP en silencio
+    // cuando el usuario esperaba HTTPS confundiría.
+    expect(() => loadConfig({ MEDIA_PASSWORD: 'algo', SESSION_SECRET: 'x'.repeat(40), TLS_CERT: '/certs/cert.pem' })).toThrowError(/TLS_CERT y TLS_KEY/);
   });
 
   it('el mensaje de ayuda explica cómo generar el secreto y la contraseña', () => {

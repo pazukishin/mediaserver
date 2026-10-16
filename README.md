@@ -181,11 +181,45 @@ tocarla. Aun así, conviene copiar `data/` antes del primer arranque.
 - **Ajustes**: tema, tamaño de las tarjetas, autoplay, estado de la biblioteca y
   reinicio del estado de reproducción (con confirmación).
 
-### En el móvil
+### En el móvil (instalar como aplicación)
 
-Abre la dirección en el navegador y usa «Añadir a la pantalla de inicio». La app
-se instala como PWA, se abre sin barra de navegación y respeta el notch y los
-gestos del sistema.
+En Android, el navegador **sólo ofrece «Instalar app» si el sitio llega por
+HTTPS**. Por HTTP en una IP de LAN no lo ofrece (en PC no se nota porque
+`localhost` ya cuenta como contexto seguro). Por eso el servidor puede servir
+HTTPS además de HTTP.
+
+Pasos:
+
+1. Genera un certificado local (una vez):
+
+   ```bash
+   # mkcert es lo más cómodo: sudo pacman -S mkcert
+   scripts/gen-certs.sh 192.168.50.3
+   ```
+
+   Esto crea `certs/server.pem`, `certs/server-key.pem` y una autoridad de
+   certificación (`rootCA.pem`).
+
+2. Instala esa CA en el móvil: copia `rootCA.pem` al teléfono y en Android ve a
+   **Ajustes → Seguridad → Instalar certificado → Certificado de CA**.
+
+3. Arranca el servidor con HTTPS (`.env` o variables del contenedor):
+
+   ```env
+   TLS_CERT=/certs/server.pem
+   TLS_KEY=/certs/server-key.pem
+   TLS_PORT=3443
+   ```
+
+   Y expón el puerto `3443` (el `docker-compose.yml` y el stack de Portainer ya
+   lo traen preparado).
+
+4. Abre `https://192.168.50.3:3443` en el móvil y usa «Instalar app» /
+   «Añadir a pantalla de inicio». La app queda como PWA, sin barra de navegación
+   y respetando el notch y los gestos del sistema.
+
+Sin HTTPS, en el móvil sólo tendrás un acceso directo que abre el navegador (no
+una aplicación independiente).
 
 ## Arquitectura
 

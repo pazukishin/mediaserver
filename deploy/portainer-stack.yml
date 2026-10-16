@@ -18,6 +18,9 @@ services:
     container_name: mediaserver
     ports:
       - "3000:3000"
+      # HTTPS opcional (para instalar la PWA en Android). Si no lo usas, quita
+      # esta línea y deja TLS_CERT/TLS_KEY vacías.
+      - "3443:3443"
     environment:
       PORT: "3000"
       MEDIA_DIR: /media
@@ -31,12 +34,19 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-0}
       SCAN_CONCURRENCY: ${SCAN_CONCURRENCY:-2}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # HTTPS opcional: rutas DENTRO del contenedor a los certificados. Déjalas
+      # vacías para servir sólo HTTP.
+      TLS_CERT: ${TLS_CERT:-}
+      TLS_KEY: ${TLS_KEY:-}
+      TLS_PORT: ${TLS_PORT:-3443}
     volumes:
       # AJUSTA ESTAS DOS RUTAS a las de tu NAS, las mismas que use tu stack
       # actual. La biblioteca va en sólo lectura; el contenedor jamás escribe
       # en ella.
       - /volume1/media:/media:ro
       - /volume1/docker/mediaserver/data:/data
+      # Para HTTPS, monta aquí la carpeta con los certificados:
+      # - /volume1/docker/mediaserver/certs:/certs:ro
     healthcheck:
       test:
         - CMD

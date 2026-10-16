@@ -8,6 +8,9 @@ coverage/
 .env.*
 !.env.example
 
+# Certificados TLS generados localmente: la clave privada jamás se versiona
+certs/
+
 # Biblioteca y datos de ejecución (solo existen en el servidor)
 media/
 data/

@@ -27,6 +27,7 @@ import { createScanner } from './services/scanner.js';
 export type BuiltApp = {
   app: FastifyInstance;
   config: AppConfig;
+  context: AppContext;
   close: () => Promise<void>;
 };
 
@@ -108,6 +109,47 @@ export async function buildApp(config: AppConfig = loadConfig()): Promise<BuiltA
       return names[index] ?? null;
     },
   };
+  await registerApplication(app, config, context);
+
+  let closed = false;
+  const close = async (): Promise<void> => {
+    if (closed) return;
+    closed = true;
+    await scanner.waitForIdle();
+    await app.close();
+    closeDatabase(db);
+  };
+
+  app.log.info(
+    {
+      app: 'MediaServer',
+      version: APP_VERSION,
+      node: process.version,
+      mediaDir: config.mediaDir,
+      dataDir: config.dataDir,
+      host: config.host,
+      port: config.port,
+      ffmpeg: ffTools.ffmpeg,
+      ffprobe: ffTools.ffprobe,
+      migrated: dbHandle.migration.migrated,
+      migratedFrom: dbHandle.migration.migrated ? dbHandle.migration.fromVersion : null,
+      backup: dbHandle.migration.backupPath,
+      scanConcurrency: config.scanConcurrency,
+      logLevel: config.logLevel,
+    },
+    'MediaServer configurado',
+  );
+
+  return { app, config, context, close };
+}
+
+/**
+ * Registra en `app` todo lo que atiende la aplicación (error handler, plugins,
+ * rutas y estáticos). Se usa tanto para el servidor HTTP como para el HTTPS, de
+ * modo que ambos responden exactamente a las mismas peticiones compartiendo el
+ * mismo contexto (base de datos, escáner, carátulas…).
+ */
+async function registerApplication(app: FastifyInstance, config: AppConfig, context: AppContext): Promise<void> {
   Object.assign(app, context);
 
   app.setErrorHandler((error: unknown, request, reply) => {
@@ -178,37 +220,6 @@ export async function buildApp(config: AppConfig = loadConfig()): Promise<BuiltA
 
   const distDir = registerStaticSite(app, config);
   setNotFoundHandler(app, distDir);
-
-  let closed = false;
-  const close = async (): Promise<void> => {
-    if (closed) return;
-    closed = true;
-    await scanner.waitForIdle();
-    await app.close();
-    closeDatabase(db);
-  };
-
-  app.log.info(
-    {
-      app: 'MediaServer',
-      version: APP_VERSION,
-      node: process.version,
-      mediaDir: config.mediaDir,
-      dataDir: config.dataDir,
-      host: config.host,
-      port: config.port,
-      ffmpeg: ffTools.ffmpeg,
-      ffprobe: ffTools.ffprobe,
-      migrated: dbHandle.migration.migrated,
-      migratedFrom: dbHandle.migration.migrated ? dbHandle.migration.fromVersion : null,
-      backup: dbHandle.migration.backupPath,
-      scanConcurrency: config.scanConcurrency,
-      logLevel: config.logLevel,
-    },
-    'MediaServer configurado',
-  );
-
-  return { app, config, close };
 }
 
 /** Sirve el SPA compilado si existe el build; nunca expone `data/`. */
@@ -272,10 +283,13 @@ async function main(): Promise<void> {
     return;
   }
 
+  const { config } = built;
+  let httpsApp: FastifyInstance | null = null;
+
   const shutdown = async (signal: string): Promise<void> => {
     built.app.log.info({ signal }, 'Cerrando MediaServer');
     try {
-      await built.close();
+      await Promise.allSettled([built.close(), httpsApp?.close()]);
       process.exitCode = 0;
     } catch (error) {
       built.app.log.error({ err: error }, 'Error al cerrar');
@@ -287,11 +301,29 @@ async function main(): Promise<void> {
   process.once('SIGTERM', () => void shutdown('SIGTERM'));
 
   try {
-    await built.app.listen({ port: built.config.port, host: built.config.host });
-    built.app.log.info({ status: 'listening' }, 'MediaServer escuchando');
+    await built.app.listen({ port: config.port, host: config.host });
+    built.app.log.info({ port: config.port }, 'MediaServer escuchando (HTTP)');
+
+    // HTTPS opcional: necesario para instalar la PWA en Android, que exige un
+    // contexto seguro. El HTTP se mantiene para escritorio/desarrollo.
+    if (config.tlsCert && config.tlsKey) {
+      httpsApp = Fastify({
+        logger: { level: config.logLevel },
+        trustProxy: config.trustProxy,
+        bodyLimit: 1_048_576,
+        https: {
+          cert: readFileSync(config.tlsCert),
+          key: readFileSync(config.tlsKey),
+        },
+      });
+      await registerApplication(httpsApp, config, built.context);
+      await httpsApp.listen({ port: config.tlsPort, host: config.host });
+      built.app.log.info({ port: config.tlsPort }, 'MediaServer escuchando (HTTPS)');
+    }
   } catch (error) {
     built.app.log.error({ err: error }, 'No se pudo abrir el puerto');
     await built.close();
+    await httpsApp?.close();
     process.exitCode = 1;
   }
 }

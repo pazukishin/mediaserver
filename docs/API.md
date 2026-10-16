@@ -262,6 +262,8 @@ Sin pérdida de vistos, favoritos ni posiciones.
 | `TRUST_PROXY` | `0` | `1` activa `secure` en la cookie y `trustProxy` |
 | `SCAN_CONCURRENCY` | `2` | ficheros procesados en paralelo |
 | `LOG_LEVEL` | `info` | `debug` sólo si se pide |
+| `TLS_CERT` / `TLS_KEY` | — | rutas al certificado y la clave para servir HTTPS (opcional; ambas o ninguna) |
+| `TLS_PORT` | `3443` | puerto HTTPS (sólo se abre si hay certificado) |
 
 `.env` se carga con `--env-file-if-exists=.env` (ya está en los scripts de
 `package.json`). En la versión anterior el servidor leía `.env` sólo por

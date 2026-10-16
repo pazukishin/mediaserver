@@ -41,6 +41,9 @@ export function createTestConfig(overrides: Partial<AppConfig> = {}): AppConfig 
     trustProxy: false,
     scanConcurrency: 1,
     logLevel: 'silent',
+    tlsCert: null,
+    tlsKey: null,
+    tlsPort: 3443,
     ...overrides,
   };
 }
