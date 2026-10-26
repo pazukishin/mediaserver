@@ -19,7 +19,7 @@ services:
       # credenciales de ejemplo. Defínelas en .env (`:?` avisa si faltan).
       MEDIA_PASSWORD: ${MEDIA_PASSWORD:?define MEDIA_PASSWORD en .env}
       SESSION_SECRET: ${SESSION_SECRET:?define SESSION_SECRET (>=32 caracteres) en .env}
-      # 1 cuando hay un proxy inverso delante (HTTPS + cookie secure)
+      # 1 cuando hay un proxy inverso delante (respeta X-Forwarded-For/Proto)
       TRUST_PROXY: ${TRUST_PROXY:-0}
       SCAN_CONCURRENCY: ${SCAN_CONCURRENCY:-2}
       LOG_LEVEL: ${LOG_LEVEL:-info}

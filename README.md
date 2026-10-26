@@ -1,6 +1,6 @@
 # MediaServer
 
-![Version](https://img.shields.io/badge/version-2.0.0-9d6bff)
+![Version](https://img.shields.io/badge/version-2.0.1-9d6bff)
 ![License](https://img.shields.io/badge/license-MIT-9d6bff)
 ![Runtime](https://img.shields.io/badge/Node.js-22%2B-9d6bff)
 
@@ -119,7 +119,7 @@ La aplicación queda en <http://localhost:3000>.
 | `HOST` | No | `0.0.0.0` | Interfaz de escucha |
 | `MEDIA_DIR` | No | `/media` si existe, si no `./media` | Biblioteca |
 | `DATA_DIR` | No | `/data` si existe, si no `./data` | Base de datos y carátulas |
-| `TRUST_PROXY` | No | `0` | `1` si va detrás de un proxy con HTTPS |
+| `TRUST_PROXY` | No | `0` | `1` si va detrás de un proxy inverso: respeta `X-Forwarded-For`/`X-Forwarded-Proto`. No cambia el flag `Secure` de la cookie |
 | `SCAN_CONCURRENCY` | No | `2` | Archivos procesados a la vez en el escaneo |
 | `LOG_LEVEL` | No | `info` | `debug` sólo si lo necesitas |
 
@@ -148,15 +148,15 @@ muestran el estado real del servicio.
 Si prefieres no construirlo en el NAS, guarda la imagen en un fichero y súbela:
 
 ```bash
-docker build --provenance=false -t pazus-mediaserver:2.0.0 .
-docker save -o pazus-mediaserver-2.0.0.tar pazus-mediaserver:2.0.0
+docker build --provenance=false -t pazus-mediaserver:2.0.1 .
+docker save -o pazus-mediaserver-2.0.1.tar pazus-mediaserver:2.0.1
 ```
 
 El `--provenance=false` evita las atestaciones de BuildKit, que dan problemas al
 importar en Docker antiguos.
 
 1. Portainer → **Images** → *Import* → selecciona el `.tar`.
-2. En tu stack, cambia la imagen a `pazus-mediaserver:2.0.0` y actualiza.
+2. En tu stack, cambia la imagen a `pazus-mediaserver:2.0.1` y actualiza.
 
 En [deploy/portainer-stack.yml](deploy/portainer-stack.yml) hay una plantilla del
 stack sólo con la imagen (sin `build:`), con el healthcheck y las variables.
@@ -324,8 +324,11 @@ Las capturas de la interfaz para revisar cambios visuales se regeneran solas en
 - El login limita los intentos fallidos y compara la contraseña en tiempo
   constante.
 - Hay cabeceras de seguridad (CSP, `nosniff`, `Referrer-Policy`, etc.).
-- **No se sirve HTTPS**: si lo expones fuera de tu red, ponlo detrás de un proxy
-  con TLS y activa `TRUST_PROXY=1`.
+- **HTTPS es opcional**: con `TLS_CERT`/`TLS_KEY` lo sirve el propio servidor, o
+  ponlo detrás de un proxy inverso con TLS y activa `TRUST_PROXY=1`. En ambos
+  casos la cookie de sesión se marca `Secure` **solo cuando la petición entra por
+  HTTPS**; por `http://` no la lleva, así que el login por http sigue funcionando
+  también con `TRUST_PROXY=1`.
 
 ## Licencia
 

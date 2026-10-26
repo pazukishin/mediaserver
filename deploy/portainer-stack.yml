@@ -4,7 +4,7 @@
 # para pegar en Portainer → Stacks → Add stack → Web editor.
 #
 # Lo más sencillo, si ya tienes un stack funcionando con la versión anterior:
-# **edita su imagen** y pon `pazus-mediaserver:2.0.0`. Así conservas volúmenes,
+# **edita su imagen** y pon `pazus-mediaserver:2.0.1`. Así conservas volúmenes,
 # variables y ajustes, y para volver atrás sólo tienes que devolver la etiqueta
 # `latest`.
 #
@@ -14,7 +14,7 @@
 
 services:
   mediaserver:
-    image: pazus-mediaserver:2.0.0
+    image: pazus-mediaserver:2.0.1
     container_name: mediaserver
     ports:
       - "3000:3000"
@@ -30,7 +30,8 @@ services:
       # credenciales de ejemplo. Defínelas en el stack (Environment variables).
       MEDIA_PASSWORD: ${MEDIA_PASSWORD:?define MEDIA_PASSWORD}
       SESSION_SECRET: ${SESSION_SECRET:?define SESSION_SECRET (32 caracteres o más)}
-      # 1 cuando haya un proxy inverso con HTTPS delante.
+      # 1 cuando haya un proxy inverso delante (respeta X-Forwarded-For/Proto).
+      # No afecta al login por http: la cookie solo lleva Secure por HTTPS.
       TRUST_PROXY: ${TRUST_PROXY:-0}
       SCAN_CONCURRENCY: ${SCAN_CONCURRENCY:-2}
       LOG_LEVEL: ${LOG_LEVEL:-info}

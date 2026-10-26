@@ -42,6 +42,13 @@ export type SessionCookieOptions = {
   secure: boolean;
 };
 
+/**
+ * Opciones de la cookie de sesión.
+ *
+ * `secure` NO es una decisión de configuración: se calcula por petición con
+ * `request.protocol`, porque una cookie `Secure` recibida por `http://` la
+ * descarta el navegador y el login entra en bucle. Ver `routes/auth.ts`.
+ */
 export function sessionCookieOptions(secure: boolean): SessionCookieOptions {
   return { httpOnly: true, sameSite: 'lax', path: '/', maxAge: SESSION_MAX_AGE_SECONDS, secure };
 }

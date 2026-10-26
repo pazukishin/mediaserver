@@ -79,8 +79,10 @@ type ScanStatus = {
 La contraseña se compara en **tiempo constante** (`crypto.timingSafeEqual`) y
 sólo se admiten credenciales por variables de entorno. La cookie `session` va
 firmada (`signed: true`), `httpOnly`, `sameSite: 'lax'`, `path: '/'`,
-`maxAge: 30 días` y `secure: true` cuando `TRUST_PROXY=1`. Las sesiones
-caducadas se purgan al validar.
+`maxAge: 30 días` y `secure` **solo si esa petición llega por HTTPS**: el flag se
+decide por petición con `request.protocol` (no por configuración), porque una
+cookie `Secure` recibida por `http://` la descarta el navegador y el login entra
+en bucle. Las sesiones caducadas se purgan al validar.
 
 ### Navegación
 
@@ -259,7 +261,7 @@ Sin pérdida de vistos, favoritos ni posiciones.
 | `MEDIA_USER` | `media` | |
 | `MEDIA_PASSWORD` | — | **obligatoria**; sin valor por defecto. Si falta, el servidor no arranca y explica qué hacer |
 | `SESSION_SECRET` | — | obligatoria (≥32 caracteres); firma la cookie |
-| `TRUST_PROXY` | `0` | `1` activa `secure` en la cookie y `trustProxy` |
+| `TRUST_PROXY` | `0` | `1` activa `trustProxy` de Fastify: se respetan `X-Forwarded-For` y `X-Forwarded-Proto` detrás de un proxy inverso. **No** decide el flag `Secure` de la cookie, que se calcula por petición según el esquema |
 | `SCAN_CONCURRENCY` | `2` | ficheros procesados en paralelo |
 | `LOG_LEVEL` | `info` | `debug` sólo si se pide |
 | `TLS_CERT` / `TLS_KEY` | — | rutas al certificado y la clave para servir HTTPS (opcional; ambas o ninguna) |

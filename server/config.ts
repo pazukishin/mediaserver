@@ -2,7 +2,7 @@ import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
 
-export const APP_VERSION = '2.0.0';
+export const APP_VERSION = '2.0.1';
 
 /** Error de configuración: el proceso no debe arrancar. */
 export class ConfigError extends Error {

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { ConfigError, loadConfig } from '../server/config.js';
-import { createTestApp, login } from './helpers/app.js';
+import { createTestApp, LOGIN_HEADERS, login } from './helpers/app.js';
 
 const PASSWORD = 'contrasena-de-prueba';
 const apps: Array<{ close: () => Promise<void> }> = [];
@@ -41,13 +41,20 @@ describe('configuración obligatoria', () => {
   });
 
   it('activa HTTPS sólo cuando TLS_CERT y TLS_KEY van juntas', () => {
-    const conTls = loadConfig({ MEDIA_PASSWORD: 'algo', SESSION_SECRET: 'x'.repeat(40), TLS_CERT: '/certs/cert.pem', TLS_KEY: '/certs/key.pem' });
+    const conTls = loadConfig({
+      MEDIA_PASSWORD: 'algo',
+      SESSION_SECRET: 'x'.repeat(40),
+      TLS_CERT: '/certs/cert.pem',
+      TLS_KEY: '/certs/key.pem',
+    });
     expect(conTls.tlsCert).toContain('cert.pem');
     expect(conTls.tlsKey).toContain('key.pem');
 
     // Una sola pieza es un error de configuración: arrancar en HTTP en silencio
     // cuando el usuario esperaba HTTPS confundiría.
-    expect(() => loadConfig({ MEDIA_PASSWORD: 'algo', SESSION_SECRET: 'x'.repeat(40), TLS_CERT: '/certs/cert.pem' })).toThrowError(/TLS_CERT y TLS_KEY/);
+    expect(() => loadConfig({ MEDIA_PASSWORD: 'algo', SESSION_SECRET: 'x'.repeat(40), TLS_CERT: '/certs/cert.pem' })).toThrowError(
+      /TLS_CERT y TLS_KEY/,
+    );
   });
 
   it('el mensaje de ayuda explica cómo generar el secreto y la contraseña', () => {
@@ -69,7 +76,7 @@ describe('GET /api/health', () => {
     const response = await app.inject({ method: 'GET', url: '/api/health' });
     expect(response.statusCode).toBe(200);
     const body = response.json();
-    expect(body).toMatchObject({ ok: true, version: '2.0.0' });
+    expect(body).toMatchObject({ ok: true, version: '2.0.1' });
     expect(typeof body.uptimeSec).toBe('number');
     expect(typeof body.items).toBe('number');
     expect(typeof body.ffmpeg).toBe('boolean');
@@ -203,12 +210,54 @@ describe('POST /api/auth/login', () => {
   });
 });
 
+/**
+ * Regresión: el flag `Secure` iba atado a `TRUST_PROXY` (configuración global), de
+ * modo que con TRUST_PROXY=1 la cookie salía `Secure` también por http://. El
+ * navegador descarta esas cookies (RFC 6265bis), así que el login respondía 200 y
+ * volvía al formulario: con un proxy HTTPS delante, la URL http dejaba de entrar.
+ *
+ * La suite no lo veía porque Playwright corre contra http://127.0.0.1, que es
+ * contexto seguro y sí acepta cookies `Secure`; por eso aquí se comprueba el flag
+ * en el `Set-Cookie` según el esquema real de la petición.
+ */
+describe('cookie de sesión: Secure según el esquema, no según TRUST_PROXY', () => {
+  async function setCookieTrasLogin(headers: Record<string, string>, overrides: { trustProxy?: boolean } = {}): Promise<string> {
+    const built = await createTestApp({ trustProxy: overrides.trustProxy ?? true });
+    apps.push(built);
+    const response = await built.app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { ...LOGIN_HEADERS, ...headers },
+      payload: { username: 'media', password: PASSWORD },
+    });
+    expect(response.statusCode).toBe(200);
+    const raw = response.headers['set-cookie'];
+    return Array.isArray(raw) ? raw.join(';') : String(raw);
+  }
+
+  it('por http:// no lleva Secure aunque TRUST_PROXY esté activo', async () => {
+    const cookie = await setCookieTrasLogin({});
+    expect(cookie).toMatch(/session=/);
+    expect(cookie).not.toMatch(/;\s*Secure/i);
+  });
+
+  it('con X-Forwarded-Proto: https (proxy con TLS) sí lleva Secure', async () => {
+    const cookie = await setCookieTrasLogin({ 'x-forwarded-proto': 'https' });
+    expect(cookie).toMatch(/;\s*Secure/i);
+  });
+
+  it('sin TRUST_PROXY no se cree el X-Forwarded-Proto del cliente', async () => {
+    const cookie = await setCookieTrasLogin({ 'x-forwarded-proto': 'https' }, { trustProxy: false });
+    expect(cookie).not.toMatch(/;\s*Secure/i);
+  });
+});
+
 describe('sesión', () => {
   it('/api/session informa del estado y el logout la invalida', async () => {
     const { app, close } = await makeApp();
     const anonymous = await app.inject({ method: 'GET', url: '/api/session' });
     expect(anonymous.statusCode).toBe(200);
-    expect(anonymous.json()).toMatchObject({ authenticated: false, version: '2.0.0' });
+    expect(anonymous.json()).toMatchObject({ authenticated: false, version: '2.0.1' });
 
     const cookie = await login(app);
     const authenticated = await app.inject({ method: 'GET', url: '/api/session', headers: { cookie } });

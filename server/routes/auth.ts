@@ -59,7 +59,14 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       throttle.clear(ip);
       const token = createSessionToken();
       insertSession(app.db, sha256(token), Date.now() + SESSION_MAX_AGE_SECONDS * 1000, request.headers['user-agent'] ?? null);
-      reply.setCookie(SESSION_COOKIE, token, { signed: true, ...sessionCookieOptions(config.trustProxy) });
+      // `Secure` se decide POR PETICIÓN, nunca por configuración global. Antes iba
+      // atado a `trustProxy`: con TRUST_PROXY=1 la cookie salía `Secure` también al
+      // entrar por http://, y el navegador la descarta (RFC 6265bis) -> el login
+      // respondía 200 y volvía al formulario, mientras por https sí entraba.
+      // `request.protocol` es `https` cuando el TLS lo sirve esta misma instancia y,
+      // con `trustProxy` activo, respeta el `X-Forwarded-Proto` del proxy inverso.
+      const secure = request.protocol === 'https';
+      reply.setCookie(SESSION_COOKIE, token, { signed: true, ...sessionCookieOptions(secure) });
       return { ok: true };
     },
   );
