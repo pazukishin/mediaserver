@@ -76,7 +76,7 @@ describe('GET /api/health', () => {
     const response = await app.inject({ method: 'GET', url: '/api/health' });
     expect(response.statusCode).toBe(200);
     const body = response.json();
-    expect(body).toMatchObject({ ok: true, version: '2.0.1' });
+    expect(body).toMatchObject({ ok: true, version: '2.0.2' });
     expect(typeof body.uptimeSec).toBe('number');
     expect(typeof body.items).toBe('number');
     expect(typeof body.ffmpeg).toBe('boolean');
@@ -257,7 +257,7 @@ describe('sesión', () => {
     const { app, close } = await makeApp();
     const anonymous = await app.inject({ method: 'GET', url: '/api/session' });
     expect(anonymous.statusCode).toBe(200);
-    expect(anonymous.json()).toMatchObject({ authenticated: false, version: '2.0.1' });
+    expect(anonymous.json()).toMatchObject({ authenticated: false, version: '2.0.2' });
 
     const cookie = await login(app);
     const authenticated = await app.inject({ method: 'GET', url: '/api/session', headers: { cookie } });

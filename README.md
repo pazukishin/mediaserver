@@ -1,6 +1,6 @@
 # MediaServer
 
-![Version](https://img.shields.io/badge/version-2.0.1-9d6bff)
+![Version](https://img.shields.io/badge/version-2.0.2-9d6bff)
 ![License](https://img.shields.io/badge/license-MIT-9d6bff)
 ![Runtime](https://img.shields.io/badge/Node.js-22%2B-9d6bff)
 
@@ -148,15 +148,15 @@ muestran el estado real del servicio.
 Si prefieres no construirlo en el NAS, guarda la imagen en un fichero y súbela:
 
 ```bash
-docker build --provenance=false -t pazus-mediaserver:2.0.1 .
-docker save -o pazus-mediaserver-2.0.1.tar pazus-mediaserver:2.0.1
+docker build --provenance=false -t pazus-mediaserver:2.0.2 .
+docker save -o pazus-mediaserver-2.0.2.tar pazus-mediaserver:2.0.2
 ```
 
 El `--provenance=false` evita las atestaciones de BuildKit, que dan problemas al
 importar en Docker antiguos.
 
 1. Portainer → **Images** → *Import* → selecciona el `.tar`.
-2. En tu stack, cambia la imagen a `pazus-mediaserver:2.0.1` y actualiza.
+2. En tu stack, cambia la imagen a `pazus-mediaserver:2.0.2` y actualiza.
 
 En [deploy/portainer-stack.yml](deploy/portainer-stack.yml) hay una plantilla del
 stack sólo con la imagen (sin `build:`), con el healthcheck y las variables.

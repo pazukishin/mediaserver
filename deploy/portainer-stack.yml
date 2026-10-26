@@ -4,7 +4,7 @@
 # para pegar en Portainer → Stacks → Add stack → Web editor.
 #
 # Lo más sencillo, si ya tienes un stack funcionando con la versión anterior:
-# **edita su imagen** y pon `pazus-mediaserver:2.0.1`. Así conservas volúmenes,
+# **edita su imagen** y pon `pazus-mediaserver:2.0.2`. Así conservas volúmenes,
 # variables y ajustes, y para volver atrás sólo tienes que devolver la etiqueta
 # `latest`.
 #
@@ -14,7 +14,7 @@
 
 services:
   mediaserver:
-    image: pazus-mediaserver:2.0.1
+    image: pazus-mediaserver:2.0.2
     container_name: mediaserver
     ports:
       - "3000:3000"
