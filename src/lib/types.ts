@@ -22,6 +22,8 @@ export type Item = {
   watchedAt: string | null;
   favoriteAt: string | null;
   sizeBytes: number | null;
+  /** Códec de vídeo medido por ffprobe (`h264`, `hevc`…); `null` si no consta. */
+  videoCodec: string | null;
   streamUrl: string;
   artworkUrl: string | null;
   previewUrl: string | null;

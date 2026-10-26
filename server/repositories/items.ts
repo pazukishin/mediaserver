@@ -31,6 +31,7 @@ export type ItemStateRow = {
   duration: number;
   width: number | null;
   height: number | null;
+  video_codec: string | null;
   size_bytes: number | null;
   cover: string | null;
   created_at: string | null;
@@ -62,6 +63,8 @@ export type Item = {
   watchedAt: string | null;
   favoriteAt: string | null;
   sizeBytes: number | null;
+  /** Códec de vídeo medido por ffprobe (`h264`, `hevc`…); `null` si no consta. */
+  videoCodec: string | null;
   streamUrl: string;
   artworkUrl: string | null;
   previewUrl: string | null;
@@ -87,7 +90,7 @@ const JOIN = `
 
 const SELECT_FIELDS = `
   m.id, m.path, m.title, m.kind, m.category, m.channel, m.extension, m.duration, m.width, m.height,
-  m.size_bytes, m.cover, m.created_at, m.added_at,
+  m.video_codec, m.size_bytes, m.cover, m.created_at, m.added_at,
   p.item_id AS item_id, p.position AS position, p.duration AS state_duration,
   COALESCE(p.watched, 0) AS watched, COALESCE(p.favorite, 0) AS favorite,
   p.watched_at AS watched_at, p.favorite_at AS favorite_at, p.updated_at AS state_updated_at`;
@@ -118,6 +121,7 @@ export function toItem(row: ItemStateRow): Item {
     watchedAt: row.watched_at ?? (watched ? row.state_updated_at : null),
     favoriteAt: row.favorite_at ?? (row.favorite ? row.state_updated_at : null),
     sizeBytes: row.size_bytes,
+    videoCodec: row.video_codec,
     streamUrl: `/api/stream/${row.id}`,
     artworkUrl,
     previewUrl: isVideo && artworkUrl ? `/api/items/${row.id}/artwork/preview` : null,

@@ -34,6 +34,16 @@ type Item = {
   watchedAt: string | null;
   favoriteAt: string | null;
   sizeBytes: number | null;
+  /**
+   * Códec de la primera pista de vídeo, tal cual lo llama ffprobe: `h264`,
+   * `hevc`, `av1`… `null` si el archivo no tiene vídeo, si no se pudo leer o si
+   * se escaneó antes de que existiera este campo.
+   *
+   * No es decorativo: `.mp4` no implica H.264. Con HEVC el navegador descarta
+   * la pista de vídeo y reproduce sólo el audio, así que el cliente lo usa para
+   * avisar en vez de dejar un reproductor en negro.
+   */
+  videoCodec: string | null;
   streamUrl: string;          // `/api/stream/{id}`
   artworkUrl: string | null;  // `/api/items/{id}/artwork`, null si no hay
   previewUrl: string | null;  // `/api/items/{id}/artwork/preview`

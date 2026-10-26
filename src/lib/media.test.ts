@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { isProbablyPlayable, mediaSource, RECOGNISED_PLAYER_TYPES } from './media.js';
+import { isProbablyPlayable, mediaSource, RECOGNISED_PLAYER_TYPES, videoCodecLabel, videoCodecUnplayable } from './media.js';
 import type { Item } from './types.js';
 
 function item(overrides: Partial<Item> = {}): Item {
@@ -20,6 +20,7 @@ function item(overrides: Partial<Item> = {}): Item {
     watchedAt: null,
     favoriteAt: null,
     sizeBytes: null,
+    videoCodec: null,
     streamUrl: '/api/stream/1',
     artworkUrl: null,
     previewUrl: null,
@@ -82,5 +83,37 @@ describe('isProbablyPlayable', () => {
     expect(isProbablyPlayable(item({ extension: '.mkv' }))).toBe(false);
     expect(isProbablyPlayable(item({ extension: '.avi' }))).toBe(false);
     expect(isProbablyPlayable(item({ extension: '.mp4' }))).toBe(true);
+  });
+});
+
+describe('videoCodecUnplayable', () => {
+  /**
+   * Regresión: un `.mp4` HEVC se reproduce con audio y **sin imagen** en
+   * Chromium/Linux, sin error. La extensión no basta para saberlo; con el códec
+   * el reproductor puede avisar antes de que el usuario vea un vídeo negro.
+   */
+  test('HEVC en un .mp4 se marca como no reproducible', () => {
+    expect(videoCodecUnplayable(item({ extension: '.mp4', videoCodec: 'hevc' }))).toBe(true);
+  });
+
+  test('los códecs que el navegador descodifica no se marcan', () => {
+    for (const codec of ['h264', 'vp8', 'vp9', 'av1', 'H264']) {
+      expect(videoCodecUnplayable(item({ videoCodec: codec }))).toBe(false);
+    }
+  });
+
+  test('sin dato no se avisa por adelantado (lo detecta el reproductor)', () => {
+    expect(videoCodecUnplayable(item({ videoCodec: null }))).toBe(false);
+  });
+
+  test('el audio nunca se marca, tenga el códec que tenga', () => {
+    expect(videoCodecUnplayable(item({ kind: 'audio', extension: '.m4a', videoCodec: 'hevc' }))).toBe(false);
+  });
+
+  test('traduce los códecs a nombres legibles', () => {
+    expect(videoCodecLabel('hevc')).toBe('HEVC (H.265)');
+    expect(videoCodecLabel('h264')).toBe('H.264');
+    expect(videoCodecLabel('av1')).toBe('AV1');
+    expect(videoCodecLabel('vvc')).toBe('VVC');
   });
 });

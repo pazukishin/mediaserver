@@ -74,3 +74,42 @@ export function isProbablyPlayable(item: Item): boolean {
   if (item.kind === 'audio') return true;
   return PLAYABLE_VIDEO.has(item.extension.toLowerCase());
 }
+
+/**
+ * Códecs de vídeo que cualquier Chromium/Firefox de escritorio descodifica sin
+ * ayuda del sistema. Fuera de esta lista el navegador no muestra la imagen: en
+ * un `.mp4` HEVC no da error, **descarta la pista de vídeo y reproduce el
+ * audio**, así que el reproductor se queda negro sin explicar nada.
+ */
+const PLAYABLE_VIDEO_CODECS = new Set(['h264', 'vp8', 'vp9', 'av1']);
+
+/** Nombre legible del códec, para el aviso al usuario. */
+export function videoCodecLabel(codec: string): string {
+  switch (codec.toLowerCase()) {
+    case 'hevc':
+    case 'h265':
+      return 'HEVC (H.265)';
+    case 'h264':
+    case 'avc1':
+      return 'H.264';
+    case 'vp9':
+      return 'VP9';
+    case 'vp8':
+      return 'VP8';
+    case 'av1':
+      return 'AV1';
+    default:
+      return codec.toUpperCase();
+  }
+}
+
+/**
+ * `true` sólo cuando **consta** un códec de vídeo que el navegador no sabe
+ * descodificar. Con `null` (archivos escaneados antes de guardar el códec) no
+ * se avisa por adelantado: de eso se encarga la detección en tiempo real del
+ * reproductor, que mira si el elemento de vídeo tiene imagen de verdad.
+ */
+export function videoCodecUnplayable(item: Item): boolean {
+  if (item.kind !== 'video' || !item.videoCodec) return false;
+  return !PLAYABLE_VIDEO_CODECS.has(item.videoCodec.toLowerCase());
+}

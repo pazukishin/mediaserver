@@ -24,6 +24,7 @@ function item(overrides: Partial<Item> = {}): Item {
     watchedAt: null,
     favoriteAt: null,
     sizeBytes: null,
+    videoCodec: null,
     streamUrl: '/api/stream/7',
     artworkUrl: null,
     previewUrl: null,

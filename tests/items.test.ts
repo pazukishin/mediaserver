@@ -82,6 +82,11 @@ describe('escaneo + catálogo', () => {
     const video = body.items.find((item: { kind: string }) => item.kind === 'video');
     expect(video.artworkUrl).toBe(`/api/items/${video.id}/artwork`);
     expect(video.previewUrl).toBe(`/api/items/${video.id}/artwork/preview`);
+    // El códec lo mide ffprobe al escanear: es lo que permite avisar de un
+    // HEVC que suena y no se ve (la extensión `.mp4` sola no lo distingue).
+    expect(video.videoCodec).toBe('h264');
+    const audio = body.items.find((item: { kind: string }) => item.kind === 'audio');
+    expect(audio.videoCodec).toBeNull();
     await close();
   });
 

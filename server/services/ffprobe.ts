@@ -5,6 +5,13 @@ export type MediaMetadata = {
   duration: number;
   width: number | null;
   height: number | null;
+  /**
+   * Códec de la primera pista de vídeo (`h264`, `hevc`, `av1`…); `null` si no
+   * hay vídeo o no se pudo averiguar. El cliente lo usa para avisar cuando el
+   * navegador no puede decodificarlo (ver `src/lib/media.ts`): un `.mp4` HEVC
+   * se reproduce con audio y sin imagen en vez de dar error.
+   */
+  videoCodec: string | null;
 };
 
 export type FfTools = {
@@ -13,6 +20,9 @@ export type FfTools = {
 };
 
 const PROBE_TIMEOUT_MS = 15_000;
+
+/** Resultado del sondeo cuando no hay datos: nunca lanza, el escaneo continúa. */
+const EMPTY_METADATA: MediaMetadata = { duration: 0, width: null, height: null, videoCodec: null };
 
 function toNumber(value: unknown): number {
   const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''));
@@ -38,7 +48,7 @@ function commandExists(command: string): boolean {
  * 0 (nunca lanza: el escaneo debe continuar con el resto de ficheros).
  */
 export async function probeMedia(filePath: string, ffprobeAvailable = true): Promise<MediaMetadata> {
-  if (!ffprobeAvailable) return { duration: 0, width: null, height: null };
+  if (!ffprobeAvailable) return { ...EMPTY_METADATA };
   try {
     const { stdout } = await runCommand('ffprobe', ['-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', filePath], {
       timeoutMs: PROBE_TIMEOUT_MS,
@@ -46,7 +56,7 @@ export async function probeMedia(filePath: string, ffprobeAvailable = true): Pro
     });
     const parsed = JSON.parse(stdout) as {
       format?: { duration?: string | number };
-      streams?: Array<{ codec_type?: string; width?: number; height?: number; duration?: string | number }>;
+      streams?: Array<{ codec_type?: string; codec_name?: string; width?: number; height?: number; duration?: string | number }>;
     };
     const video = parsed.streams?.find((stream) => stream.codec_type === 'video');
     const duration = toNumber(parsed.format?.duration) || toNumber(video?.duration);
@@ -54,8 +64,9 @@ export async function probeMedia(filePath: string, ffprobeAvailable = true): Pro
       duration,
       width: video?.width === undefined ? null : toNumber(video.width),
       height: video?.height === undefined ? null : toNumber(video.height),
+      videoCodec: typeof video?.codec_name === 'string' && video.codec_name !== '' ? video.codec_name.toLowerCase() : null,
     };
   } catch {
-    return { duration: 0, width: null, height: null };
+    return { ...EMPTY_METADATA };
   }
 }

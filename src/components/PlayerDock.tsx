@@ -1,6 +1,6 @@
 import { MediaPlayer, MediaProvider, type PlayerSrc } from '@vidstack/react';
 import { DefaultVideoLayout, defaultLayoutIcons } from '@vidstack/react/player/layouts/default';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLocation, useMatch, useNavigate } from 'react-router-dom';
 import '@vidstack/react/player/styles/default/theme.css';
 import '@vidstack/react/player/styles/default/layouts/video.css';
@@ -9,7 +9,7 @@ import { usePlayer } from '../data/PlayerProvider.js';
 import { usePreferences } from '../data/Preferences.js';
 import { formatClock } from '../lib/format.js';
 import { IconCheck, IconClose, IconHeart, IconList, IconMusic, IconPause, IconPlay, IconSkipNext, IconSkipPrev } from '../lib/icons.js';
-import { isProbablyPlayable, mediaSource } from '../lib/media.js';
+import { isProbablyPlayable, mediaSource, videoCodecLabel, videoCodecUnplayable } from '../lib/media.js';
 import type { Item } from '../lib/types.js';
 import { Artwork } from './Artwork.js';
 import { Sheet } from './Sheet.js';
@@ -29,12 +29,35 @@ export function PlayerDock() {
   const location = useLocation();
   const routeMatch = useMatch('/ver/:id');
   const [queueOpen, setQueueOpen] = useState(false);
+  /**
+   * Elemento en el que se detectó que el vídeo suena sin imagen (`videoWidth`
+   * a 0 con el tiempo avanzando). Es lo que hace Chromium con un códec que no
+   * descodifica —HEVC en Linux—: no da error, descarta la pista de vídeo y
+   * reproduce el audio. Se guarda el `id` en vez de un booleano para que el
+   * aviso se reinicie solo al cambiar de elemento, sin efecto de limpieza.
+   */
+  const [noImageFor, setNoImageFor] = useState<number | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
 
   if (!current) return null;
 
   const mode = routeMatch ? 'full' : 'mini';
   const source = mediaSource(current);
   const playable = isProbablyPlayable(current);
+  const currentId = current.id;
+  const noImage = noImageFor === currentId;
+  const codecUnplayable = videoCodecUnplayable(current);
+  const showFormatNote = playable && current.kind === 'video' && (codecUnplayable || noImage);
+  /**
+   * Se comprueba con el tiempo avanzando, no al cargar: una pista que tarda en
+   * arrancar no es el problema que se avisa aquí, y exigir más de un segundo de
+   * reproducción evita avisos falsos durante el arranque.
+   */
+  const checkVideoTrack = () => {
+    const video = stageRef.current?.querySelector('video');
+    if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+    if (video.currentTime > 1 && video.videoWidth === 0) setNoImageFor(currentId);
+  };
   const closeFullPlayer = () => {
     if (location.key === 'default') navigate('/');
     else navigate(-1);
@@ -49,7 +72,7 @@ export function PlayerDock() {
   return (
     <>
       <div className="player-dock" data-mode={mode} data-kind={current.kind} aria-hidden={mode === 'mini' ? true : undefined}>
-        <div className="dock-stage">
+        <div className="dock-stage" ref={stageRef}>
           {current.kind === 'audio' && (
             <div className="player-audio-art">
               {current.artworkUrl && (
@@ -74,6 +97,7 @@ export function PlayerDock() {
               playsInline
               streamType="on-demand"
               onEnded={handleEnded}
+              onTimeUpdate={checkVideoTrack}
             >
               <MediaProvider />
               {current.kind === 'video' ? <DefaultVideoLayout icons={defaultLayoutIcons} /> : <AudioControls />}
@@ -86,6 +110,24 @@ export function PlayerDock() {
                 reproductor local.
               </p>
               <a className="btn btn-primary" href={current.streamUrl} download>
+                Descargar el archivo
+              </a>
+            </div>
+          )}
+
+          {/* El audio sigue sonando: el aviso sólo explica por qué no hay imagen.
+              `pointer-events: none` en el contenedor para no tapar los controles
+              del reproductor; el enlace de descarga sí los recupera. */}
+          {showFormatNote && (
+            <div className="format-note" role="status">
+              <p>
+                <strong>Sin imagen.</strong>{' '}
+                {current.videoCodec && codecUnplayable
+                  ? `Este vídeo está codificado en ${videoCodecLabel(current.videoCodec)} y tu navegador no sabe descodificarlo, así que sólo se reproduce el audio.`
+                  : 'Tu navegador está reproduciendo el audio, pero no puede mostrar la imagen de este vídeo.'}{' '}
+                Puedes descargarlo y verlo con un reproductor local.
+              </p>
+              <a className="btn btn-ghost" href={current.streamUrl} download>
                 Descargar el archivo
               </a>
             </div>

@@ -8,7 +8,7 @@
  * ver la migración 2); hay que arreglarla explícitamente antes de crear el
  * esquema.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 4;
 
 export const TABLES_SQL = `
 CREATE TABLE IF NOT EXISTS media_items (
@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS media_items (
   height        INTEGER,
   size_bytes    INTEGER,
   file_mtime    INTEGER,
+  video_codec   TEXT,
   cover         TEXT,
   created_at    TEXT,
   added_at      TEXT NOT NULL DEFAULT '',

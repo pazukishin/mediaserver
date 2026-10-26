@@ -48,6 +48,7 @@ export type ScannerPiece = {
   duration: number;
   width: number | null;
   height: number | null;
+  videoCodec: string | null;
   sizeBytes: number | null;
   fileMtime: number | null;
   cover: string | null;
@@ -57,7 +58,10 @@ export type ScannerPiece = {
 };
 
 export type ScannerServices = {
-  probe: (filePath: string, ffprobeAvailable: boolean) => Promise<{ duration: number; width: number | null; height: number | null }>;
+  probe: (
+    filePath: string,
+    ffprobeAvailable: boolean,
+  ) => Promise<{ duration: number; width: number | null; height: number | null; videoCodec: string | null }>;
   cover: (filePath: string, relativePath: string, kind: ItemKind, context: CoverContext, duration: number) => Promise<string | null>;
 };
 
@@ -217,7 +221,7 @@ export function createScanner(deps: ScannerDeps): Scanner {
   }
 
   async function processFile(file: ScannedFile, existing: ExistingItem | undefined, context: CoverContext): Promise<ScannerPiece> {
-    const { duration, width, height } = await services.probe(file.fullPath, deps.ffprobe);
+    const { duration, width, height, videoCodec } = await services.probe(file.fullPath, deps.ffprobe);
     // Si ffprobe no da duración se conserva la que ya conocía el reproductor.
     const effectiveDuration = duration > 0 ? duration : (existing?.duration ?? 0);
     const cover = await services.cover(file.fullPath, file.relativePath, file.kind, context, effectiveDuration);
@@ -232,6 +236,7 @@ export function createScanner(deps: ScannerDeps): Scanner {
       duration: effectiveDuration,
       width,
       height,
+      videoCodec,
       sizeBytes: file.sizeBytes,
       fileMtime: file.fileMtimeMs,
       cover: cover ?? previousCover,
@@ -245,9 +250,9 @@ export function createScanner(deps: ScannerDeps): Scanner {
     if (pieces.length === 0) return;
     const upsert = db.prepare(
       `INSERT INTO media_items
-         (path, category, channel, kind, title, extension, duration, width, height, size_bytes, file_mtime, cover, created_at, added_at, updated_at, scanned_at, search_key)
+         (path, category, channel, kind, title, extension, duration, width, height, video_codec, size_bytes, file_mtime, cover, created_at, added_at, updated_at, scanned_at, search_key)
        VALUES
-         (@path, @category, @channel, @kind, @title, @extension, @duration, @width, @height, @sizeBytes, @fileMtime, @cover, @createdAt, @addedAt, @updatedAt, @scannedAt, @searchKey)
+         (@path, @category, @channel, @kind, @title, @extension, @duration, @width, @height, @videoCodec, @sizeBytes, @fileMtime, @cover, @createdAt, @addedAt, @updatedAt, @scannedAt, @searchKey)
        ON CONFLICT(path) DO UPDATE SET
          category = excluded.category,
          channel = excluded.channel,
@@ -257,6 +262,7 @@ export function createScanner(deps: ScannerDeps): Scanner {
          duration = excluded.duration,
          width = excluded.width,
          height = excluded.height,
+         video_codec = excluded.video_codec,
          size_bytes = excluded.size_bytes,
          file_mtime = excluded.file_mtime,
          cover = excluded.cover,
@@ -277,6 +283,7 @@ export function createScanner(deps: ScannerDeps): Scanner {
           duration: piece.duration,
           width: piece.width,
           height: piece.height,
+          videoCodec: piece.videoCodec,
           sizeBytes: piece.sizeBytes,
           fileMtime: piece.fileMtime,
           cover: piece.cover,

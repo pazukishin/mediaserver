@@ -127,6 +127,24 @@ export const migrations: Migration[] = [
       db.prepare('INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(3, new Date().toISOString());
     },
   },
+  {
+    version: 4,
+    description: 'Guardar el códec de vídeo de cada archivo',
+    run: (db) => {
+      // La extensión no basta para saber si el navegador podrá mostrar la imagen:
+      // un `.mp4` puede ser H.264 (se ve) o HEVC (suena y no se ve). El códec lo
+      // mide ffprobe al escanear y el reproductor lo usa para avisar en vez de
+      // dejar un vídeo negro sin explicación.
+      //
+      // Las filas que ya existen se quedan con `video_codec = NULL` («sin dato»)
+      // y el reproductor detecta el caso sobre la marcha; NO se fuerza un
+      // reescaneo completo porque volver a pasar ffprobe por toda la biblioteca
+      // cuesta minutos de CPU en el NAS y sólo aporta el nombre del códec.
+      const columns = new Set((db.prepare('PRAGMA table_info(media_items)').all() as Array<{ name: string }>).map((column) => column.name));
+      if (!columns.has('video_codec')) db.exec('ALTER TABLE media_items ADD COLUMN video_codec TEXT');
+      db.prepare('INSERT OR REPLACE INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(4, new Date().toISOString());
+    },
+  },
 ];
 
 /** Añade las columnas que no existían en 1.2.2 y rellena lo imprescindible. */

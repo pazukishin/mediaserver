@@ -1483,6 +1483,46 @@
   height: 100%;
 }
 
+/* Aviso de «suena pero no se ve» (códec que el navegador no descodifica, p. ej.
+ * HEVC en Chromium/Linux). Flota sobre el vídeo negro sin robar los clics del
+ * reproductor: sólo el enlace de descarga es interactivo. */
+.format-note {
+  position: absolute;
+  inset-block-start: var(--s-3);
+  inset-inline: var(--s-3) auto;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-2);
+  max-width: min(440px, calc(100% - var(--s-5)));
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-base);
+  box-shadow: var(--shadow-overlay);
+  pointer-events: none;
+}
+
+.format-note p {
+  margin: 0;
+}
+
+.format-note strong {
+  color: var(--text);
+}
+
+.format-note a {
+  pointer-events: auto;
+}
+
+.player-dock[data-mode="mini"] .format-note {
+  display: none;
+}
+
 /* Audio: carátula grande arriba y controles nativos abajo. */
 .player-dock[data-kind="audio"] .dock-stage {
   flex-direction: column;

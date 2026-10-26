@@ -21,6 +21,7 @@ describe('probeMedia', () => {
     expect(metadata.duration).toBeLessThan(3);
     expect(metadata.width).toBe(160);
     expect(metadata.height).toBe(120);
+    expect(metadata.videoCodec).toBe('h264');
   });
 
   it('lee la duración real de un audio', async () => {
@@ -28,16 +29,17 @@ describe('probeMedia', () => {
     expect(metadata.duration).toBeGreaterThan(0.1);
     expect(metadata.duration).toBeLessThan(3);
     expect(metadata.width).toBeNull();
+    expect(metadata.videoCodec).toBeNull();
   });
 
   it('devuelve duración 0 sin lanzar si el fichero no es multimedia', async () => {
     const directory = createTempDir('probe-bad-');
     const broken = `${directory}/roto.mp3`;
-    await expect(probeMedia(broken)).resolves.toEqual({ duration: 0, width: null, height: null });
+    await expect(probeMedia(broken)).resolves.toEqual({ duration: 0, width: null, height: null, videoCodec: null });
   });
 
   it('devuelve duración 0 si ffprobe no está disponible', async () => {
-    await expect(probeMedia(audioPath, false)).resolves.toEqual({ duration: 0, width: null, height: null });
+    await expect(probeMedia(audioPath, false)).resolves.toEqual({ duration: 0, width: null, height: null, videoCodec: null });
   });
 });
 

@@ -109,7 +109,7 @@ describe('migración desde el esquema 1.2.2', () => {
     const { db, migration } = openDatabase(config.dbPath);
     handles.push(db);
     expect(migration.migrated).toBe(true);
-    expect(migration.applied).toEqual([1, 2, 3]);
+    expect(migration.applied).toEqual([1, 2, 3, 4]);
 
     const rows = db
       .prepare('SELECT path, position, duration, watched, favorite, updated_at FROM playback_state ORDER BY path')
@@ -145,7 +145,17 @@ describe('migración desde el esquema 1.2.2', () => {
     // El esquema nuevo está completo.
     expect(db.prepare('SELECT COUNT(*) AS total FROM media_items').get()).toEqual({ total: 3 });
     const columns = (db.prepare('PRAGMA table_info(media_items)').all() as Array<{ name: string }>).map((column) => column.name);
-    for (const column of ['extension', 'width', 'height', 'size_bytes', 'file_mtime', 'added_at', 'scanned_at', 'search_key']) {
+    for (const column of [
+      'extension',
+      'width',
+      'height',
+      'size_bytes',
+      'file_mtime',
+      'added_at',
+      'scanned_at',
+      'search_key',
+      'video_codec',
+    ]) {
       expect(columns, column).toContain(column);
     }
     expect(
@@ -159,6 +169,7 @@ describe('migración desde el esquema 1.2.2', () => {
       { version: 1 },
       { version: 2 },
       { version: 3 },
+      { version: 4 },
     ]);
   });
 
