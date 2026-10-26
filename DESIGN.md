@@ -213,6 +213,14 @@ Una **sola instancia** de `MediaPlayer` (Vidstack) vive en el árbol, dentro de
 | `mini` | hay reproducción y la ruta no es `/ver/:id` | barra fija sobre la navegación: arte 40px, título, play/pausa, progreso |
 | `full` | ruta `/ver/:id` | a pantalla completa en móvil; overlay con columna lateral de cola en escritorio |
 
+- **Encuadre del vídeo**: la imagen se ve **entera y sin deformar**, con bandas
+  negras donde sobre (el escenario ya es negro). El `<video>` ocupa la caja del
+  reproductor y se ajusta por dentro con `object-fit: contain`. **Nunca** se
+  recorta para llenar el ancho: el escenario es `overflow: hidden` y, si el
+  elemento se dimensiona por anchura, en una ventana más ancha que el vídeo la
+  caja resultante es más alta que el escenario y se pierde imagen por arriba y
+  por abajo.
+
 - **Cola**: reproducible por canal ("Reproducir todo"), con siguiente/anterior y
   autoplay. La cola vive en el contexto del reproductor, no en cada pantalla.
 - **MediaSession**: título, canal, carátula y posición en la pantalla de bloqueo

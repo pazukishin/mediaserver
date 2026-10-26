@@ -1483,6 +1483,22 @@
   height: 100%;
 }
 
+/* El vídeo se ve entero y sin deformar: ocupa la caja del reproductor y se
+ * ajusta por dentro con `contain`, dejando bandas negras donde sobre (el fondo
+ * del escenario ya es negro).
+ *
+ * Sin esto, Vidstack dimensiona el <video> por anchura (`width: 100%` con
+ * `aspect-ratio` heredado), así que en un escenario más ancho que el vídeo la
+ * caja resultante es MÁS ALTA que el propio escenario y `overflow: hidden` la
+ * recorta por arriba y por abajo: se veía «ampliado» y cortado. Medido a
+ * 1551×480 de ventana: escenario 1211×343, caja del vídeo 1209×680 (+337 px
+ * fuera). Con esta regla la caja mide 1209×341 y el contenido va con bandas. */
+.dock-stage > .player-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 /* Aviso de «suena pero no se ve» (códec que el navegador no descodifica, p. ej.
  * HEVC en Chromium/Linux). Flota sobre el vídeo negro sin robar los clics del
  * reproductor: sólo el enlace de descarga es interactivo. */
