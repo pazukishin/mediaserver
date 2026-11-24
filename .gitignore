@@ -30,3 +30,13 @@ blob-report/
 .DS_Store
 npm-debug.log*
 pnpm-debug.log*
+
+# --- Secretos: NUNCA versionar (bloque git-seguro) ---
+*.pem
+*.key
+*.p12
+*.jks
+.secrets/
+credentials.json
+*credentials*.json
+*.kdbx
